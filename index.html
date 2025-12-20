@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Otel KDS - Yönetici Paneli</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        .sidebar { min-height: 100vh; background: #2c3e50; color: white; padding-top: 20px; position: fixed; width: 16.66%; }
+        .sidebar a { color: #bdc3c7; text-decoration: none; display: block; padding: 15px 20px; transition: 0.3s; cursor: pointer; }
+        .sidebar a:hover, .sidebar a.active { background: #34495e; color: white; border-left: 4px solid #3498db; }
+        .content-area { margin-left: 16.66%; padding: 30px; width: 83.34%; }
+        .page-section { display: none; animation: fadeIn 0.4s; }
+        .page-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .card { border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-radius: 12px; margin-bottom: 20px; background: white; }
+        .currency-row { border-bottom: 1px solid #444; padding: 10px 0; cursor: pointer; transition: 0.2s; }
+        .currency-row:hover { background-color: #444; padding-left: 10px; border-radius: 5px; }
+        .oda-kutu { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+        .oda-kutu:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 sidebar p-0">
+            <div class="text-center mb-4 fw-bold fs-4 text-white">🏨 Otel KDS</div>
+            <a onclick="sayfaDegistir('sayfa-ozet', this)" class="menu-link active"><i class="fas fa-home"></i> Genel Bakış</a>
+            <a onclick="sayfaDegistir('sayfa-simulasyon', this)" class="menu-link"><i class="fas fa-calculator"></i> Fiyat Simülasyonu</a>
+            <a onclick="sayfaDegistir('sayfa-rakip', this)" class="menu-link"><i class="fas fa-chart-line"></i> Rakip Analizi</a>
+            <a onclick="sayfaDegistir('sayfa-ik', this)" class="menu-link"><i class="fas fa-users"></i> İK Hesaplayıcı</a>
+            <a onclick="sayfaDegistir('sayfa-tahmin', this)" class="menu-link text-info"><i class="fas fa-crystal-ball"></i> Gelecek Tahmini</a>
+            <a onclick="sayfaDegistir('sayfa-odalar', this)" class="menu-link text-warning"><i class="fas fa-bed"></i> Oda Yönetimi</a>
+            <hr style="border-color: #555;">
+            <a onclick="excelIndir()" class="menu-link text-success"><i class="fas fa-file-excel"></i> Excel İndir</a>
+            <a onclick="window.print()" class="menu-link text-warning"><i class="fas fa-print"></i> PDF/Yazdır</a>
+            <a onclick="cikisYap()" class="menu-link text-danger mt-2"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+        </div>
+
+        <div class="col-md-10 content-area">
+            <div class="d-flex justify-content-end mb-4">
+                <div class="fw-bold text-secondary"><i class="fas fa-user-circle fs-4 me-2"></i> Yönetici Paneli</div>
+            </div>
+
+            <div id="sayfa-ozet" class="page-section active">
+                <h2 class="mb-4">📊 Genel Durum Özeti (TL)</h2>
+                <div class="row text-center mb-4">
+                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-primary"><h6 class="text-muted">Toplam Rezervasyon</h6><h3 class="text-primary" id="toplamRez">...</h3></div></div>
+                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-success"><h6 class="text-muted">Toplam Ciro</h6><h3 class="text-success" id="toplamCiro">...</h3></div></div>
+                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-warning"><h6 class="text-muted">Ort. Fiyat</h6><h3 class="text-warning" id="ortFiyat">...</h3></div></div>
+                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-danger"><h6 class="text-muted">İptaller</h6><h3 class="text-danger" id="iptalSayisi">...</h3></div></div>
+                </div>
+                <div class="row">
+                    <div class="col-md-8"><div class="card p-4"><h4>📈 Aylık Trend</h4><div style="height:300px"><canvas id="dolulukGrafigi"></canvas></div></div></div>
+                    <div class="col-md-4"><div class="card p-4"><h4>🍂 Mevsimsel</h4><div style="height:300px"><canvas id="mevsimGrafigi"></canvas></div></div></div>
+                </div>
+            </div>
+
+            <div id="sayfa-simulasyon" class="page-section"><h2 class="mb-4 text-primary">🤖 Fiyat Simülasyonu</h2><div class="row"><div class="col-md-5"><div class="card p-4 border-top border-4 border-primary"><h5>Senaryo</h5><input type="number" id="fiyatDegisimi" class="form-control mb-3" placeholder="%"><button class="btn btn-primary w-100" onclick="fiyatSimulasyonuYap()">Hesapla</button><div id="simSonuc" class="mt-3"></div></div></div><div class="col-md-7"><div class="card p-4"><div style="height:300px"><canvas id="senaryoGrafigi"></canvas></div></div></div></div></div>
+            <div id="sayfa-rakip" class="page-section"><h2 class="mb-4 text-warning">⚔️ Rekabet</h2><div class="row"><div class="col-md-9"><div class="card p-4 border-warning border-top border-4"><div style="height:400px"><canvas id="rakipGrafigi"></canvas></div></div></div><div class="col-md-3"><div class="card bg-dark text-white p-3"><h5 class="text-warning">Piyasalar</h5><small class="text-muted mb-2 d-block"><i class="fas fa-mouse-pointer"></i> Detay için tıklayın</small><div id="dovizListesi">Loading...</div></div></div></div></div>
+            <div id="sayfa-ik" class="page-section"><h2 class="mb-4 text-info">👥 İK Planlama</h2><div class="row"><div class="col-md-4"><div class="card p-4 border-top border-4 border-info"><h5>Doluluk %</h5><input type="range" class="form-range" id="dolulukSlider" min="0" max="100" value="50" oninput="ikSimulasyonuYap(this.value)"><input type="number" id="dolulukInput" class="form-control" value="50"></div></div><div class="col-md-8"><div class="card p-4"><div class="row text-center"><div class="col-4 border p-2">Temizlik<br><b id="ikTemizlik">-</b></div><div class="col-4 border p-2">Servis<br><b id="ikServis">-</b></div><div class="col-4 border p-2 bg-dark text-white">TOPLAM<br><b id="ikToplam">-</b></div></div></div></div></div></div>
+            <div id="sayfa-tahmin" class="page-section"><h2 class="mb-4 text-info">🔮 Tahmin</h2><div class="card p-4 mb-4"><div style="height:300px"><canvas id="tahminGrafigi"></canvas></div></div><div class="card p-4"><table class="table table-bordered"><thead class="table-dark"><tr><th>Ay</th><th>Tahmini Talep</th><th>Aksiyon</th></tr></thead><tbody id="stratejiTablosu"></tbody></table></div></div>
+
+            <div id="sayfa-odalar" class="page-section">
+                <h2 class="mb-4 text-warning">🛎️ Oda Yönetimi</h2>
+                
+                <div class="card p-4 border-start border-5 border-success mb-4 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="text-success"><i class="fas fa-plus-circle"></i> Yeni Rezervasyon</h4></div>
+                    <form id="rezervasyonForm" onsubmit="event.preventDefault(); rezervasyonEkle();">
+                        <div class="row g-3">
+                            <div class="col-md-2"><input type="date" id="inpTarih" class="form-control" required></div>
+                            <div class="col-md-2"><input type="number" id="inpSure" class="form-control" value="3" required></div>
+                            <div class="col-md-2"><input type="number" id="inpOda" class="form-control" placeholder="Oda No" required></div>
+                            <div class="col-md-2"><select id="inpTip" class="form-select"><option>Standart</option><option>Deluxe</option><option>Suit</option><option>Kral Dairesi</option></select></div>
+                            <div class="col-md-2"><input type="number" id="inpFiyat" class="form-control" placeholder="Fiyat" required></div>
+                            <div class="col-md-2"><button type="submit" class="btn btn-success w-100">KAYDET</button></div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card p-4"><h4>Oda Tipleri</h4><div style="height:200px"><canvas id="odaTipiGrafigi"></canvas></div></div>
+                    </div>
+                </div>
+                
+                <div class="card p-4">
+                    <h4>Kat Planı (101 - 150)</h4>
+                    <div class="row g-2" id="odaGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="dovizModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title" id="dovizModalBaslik">Döviz</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div style="height:350px"><canvas id="dovizDetayGrafigi"></canvas></div></div></div></div></div>
+<div class="modal fade" id="odaDetayModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title">Oda: <span id="mdlOdaNo"></span></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><img id="mdlResim" src="" class="img-fluid rounded mb-3" style="width:100%;height:250px;object-fit:cover;"><div id="mdlDurumBadge" class="badge bg-success w-100 p-2"></div></div><div class="col-md-6"><h4 id="mdlTip" class="text-primary"></h4><h3 id="mdlFiyat" class="text-success"></h3><hr><h6>Özellikler:</h6><ul id="mdlOzellikler" class="small text-muted"></ul><div id="mdlRezBilgi" class="alert alert-warning mt-3" style="display:none;"><strong>Misafir:</strong><br>Giriş: <span id="mdlGiris"></span><br>Çıkış: <span id="mdlCikis"></span></div></div></div></div></div></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function sayfaDegistir(id, el) {
+        document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+        el.classList.add('active');
+        localStorage.setItem('sonAcilanSayfa', id);
+        window.dispatchEvent(new Event('resize'));
+    }
+</script>
+<script src="app.js?v=gold_final_v4"></script>
+</body>
+</html>
