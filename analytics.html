@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desport KDS | Premium Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-light: #f8f9fa;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+        }
+        body {
+            background-color: var(--bg-light);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .room-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .room-card:hover { 
+            background: #f8f9fa; 
+            transform: translateX(5px); 
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .room-card::before { 
+            content: ''; 
+            position: absolute; 
+            left: 0; 
+            top: 0; 
+            bottom: 0; 
+            width: 4px; 
+            background: currentColor; 
+        }
+        
+        input[type=range] { 
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; 
+            height: 20px; 
+            width: 20px; 
+            border-radius: 50%;
+            background: var(--accent-blue); 
+            cursor: pointer; 
+            margin-top: -8px; 
+            box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track { 
+            width: 100%; 
+            height: 4px; 
+            background: #cbd5e1; 
+            border-radius: 2px; 
+        }
+        
+        .text-gradient { 
+            background: linear-gradient(to right, var(--accent-blue), var(--accent-purple)); 
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent; 
+        }
+        .stat-value { 
+            font-size: 2.5rem; 
+            font-weight: 700; 
+            letter-spacing: -1px; 
+            color: var(--text-main);
+        }
+        
+        .modal-content { 
+            background: #ffffff; 
+            border: 1px solid var(--border-color); 
+            border-radius: 12px; 
+            color: var(--text-main);
+        }
+        .modal-header { 
+            border-bottom: 1px solid var(--border-color); 
+        }
+        .animate-fade { 
+            animation: fadeIn 0.4s ease-in-out; 
+        }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        
+        .text-light {
+            color: var(--text-main) !important;
+        }
+        
+        .text-muted {
+            color: var(--text-muted) !important;
+        }
+        
+        .table-dark {
+            background: #f8f9fa !important;
+            color: var(--text-main) !important;
+        }
+        
+        .table-dark tbody tr:hover {
+            background: #f1f5f9 !important;
+        }
+        
+        .bg-dark {
+            background: #f8f9fa !important;
+            color: var(--text-main) !important;
+        }
+        
+        .border-secondary {
+            border-color: var(--border-color) !important;
+        }
+    </style>
+</head>
+<body class="p-4">
+
+<div class="container">
+    <div class="d-flex justify-content-between align-items-end mb-5">
+        <div>
+            <h6 class="text-uppercase ls-2 mb-1" style="color: var(--accent-blue); font-size: 0.8rem; letter-spacing: 2px;">Yönetim Paneli</h6>
+            <h2 class="fw-bold mb-0 display-6">Desport <span class="text-gradient">AI Analytics</span></h2>
+        </div>
+        <div class="text-end">
+            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill">
+                <i class="fas fa-calendar-alt me-2"></i>Sezon: Yaz 2025
+            </span>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-4">
+            <div class="glass-card p-4 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <label class="fw-bold">Fiyat Politikası</label>
+                        <i class="fas fa-microchip text-muted"></i>
+                    </div>
+                    <div class="mb-2"><input type="range" id="yuzdeSlider" min="-50" max="50" step="5" value="0" oninput="simulasyonGuncelle()"></div>
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-5">
+                        <small class="text-muted">-50%</small>
+                        <span class="h2 fw-bold text-gradient m-0" id="yuzdeLabel">%0</span>
+                        <small class="text-muted">+50%</small>
+                    </div>
+                    <div class="p-3 rounded-3 mb-3 bg-light">
+                        <div class="d-flex align-items-center">
+                            <div class="p-3 bg-warning bg-opacity-10 rounded-circle me-3"><i class="fas fa-hotel text-warning"></i></div>
+                            <div><small class="text-muted d-block text-uppercase" style="font-size: 0.7rem;">Pazar Ortalaması</small><span class="fw-bold fs-5" id="rakipOrtalamaLabel">...</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 pt-4 border-top text-center">
+                    <small class="text-muted text-uppercase ls-1">Tahmini Günlük Ciro</small>
+                    <div class="stat-value text-success mt-2" id="netKarLabel">...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <div class="glass-card p-4 h-100">
+                <div class="row h-100 align-items-center">
+                    <div class="col-md-5 text-center border-end">
+                        <h6 class="mb-4">Gelir Dağılımı</h6>
+                        <div style="width: 100%; height: 260px; position: relative;">
+                            <canvas id="fiyatPastaGrafigi"></canvas>
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;"><i class="fas fa-chart-pie text-muted opacity-25 fa-3x"></i></div>
+                        </div>
+                        <small class="text-muted d-block mt-3" style="font-size: 0.75rem;"><i class="fas fa-info-circle me-1"></i>Analiz için dilimlere tıklayın</small>
+                    </div>
+                    <div class="col-md-7 ps-md-4">
+                        <div class="d-flex justify-content-between align-items-center mb-4"><h6 class="m-0">Oda Tipleri & Fiyatlar</h6><small class="text-muted" style="font-size: 0.7rem;">Canlı Veri</small></div>
+                        <div class="row g-2" id="odaKartlariRow"><div class="text-center py-5 text-muted"><div class="spinner-border text-primary"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div><h5 class="fw-bold m-0">Oda Bazlı Gelir Tahminleri (6 Ay)</h5><small class="text-muted">Her oda tipinin ayrı senaryo analizi</small></div>
+            <div class="d-flex gap-2">
+                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">Kötümser</span>
+                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Realist</span>
+                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">İyimser</span>
+            </div>
+        </div>
+        <div id="senaryoGrafikleriContainer" class="row g-4"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="odaDetayModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header">
+                <div><h5 class="modal-title fw-bold" id="modalOdaBaslik">Detay Analizi</h5><small class="text-muted">Kaynak: Booking DB & Google Hotels API</small></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="bolumGrafik" class="d-none animate-fade">
+                    <div class="d-flex align-items-center mb-4"><div class="p-2 bg-info bg-opacity-10 rounded me-3"><i class="fas fa-history text-info"></i></div><h6 class="m-0 text-info">Fiyat Geçmişi (2023-2025)</h6></div>
+                    <div class="p-3 rounded-4 bg-light border"><div style="height: 400px;"><canvas id="detayGrafigi"></canvas></div></div>
+                </div>
+                <div id="bolumRakip" class="d-none animate-fade">
+                    <div class="row">
+                        <div class="col-lg-7 mb-4 mb-lg-0">
+                            <div class="d-flex align-items-center mb-4"><div class="p-2 bg-warning bg-opacity-10 rounded me-3"><i class="fas fa-balance-scale text-warning"></i></div><h6 class="m-0 text-warning">Pazar Karşılaştırması</h6></div>
+                            <div class="p-3 rounded-4 bg-light border"><div style="height: 300px;"><canvas id="rakipGrafigi"></canvas></div></div>
+                        </div>
+                        <div class="col-lg-5">
+                            <h6 class="mb-3">Rakip Listesi (Google)</h6>
+                            <div class="table-responsive"><table class="table table-hover"><tbody id="modalRakipListesi"></tbody></table></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.scale.grid.color = 'rgba(0, 0, 0, 0.05)';
+    
+    let odaGrafikleri = [], detayChart = null, rakipChart = null, pastaChart = null;
+    document.addEventListener('DOMContentLoaded', () => { simulasyonGuncelle(); });
+
+    async function simulasyonGuncelle() {
+        const yuzde = document.getElementById('yuzdeSlider').value;
+        const label = document.getElementById('yuzdeLabel');
+        label.innerText = (yuzde > 0 ? '+' : '') + yuzde + '%';
+        label.style.color = yuzde > 0 ? '#10b981' : (yuzde < 0 ? '#ef4444' : '#1e293b');
+
+        try {
+            const res = await fetch('/api/simule-et', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ yuzdeDegisim: parseFloat(yuzde) })
+            });
+            const data = await res.json();
+            
+            kartlariCiz(data.kartlar);
+            pastaGrafigiCiz(data.kartlar);
+            senaryoGrafiginiCiz(data.grafik); // 4'lü Grafik
+            
+            document.getElementById('netKarLabel').innerText = data.genel.toLocaleString('tr-TR') + ' ₺';
+            if(data.rakipOrtalama) document.getElementById('rakipOrtalamaLabel').innerText = data.rakipOrtalama.toLocaleString('tr-TR') + ' ₺';
+        } catch(e) { console.error("Hata:", e); }
+    }
+
+    function kartlariCiz(kartlar) {
+        const row = document.getElementById('odaKartlariRow'); row.innerHTML = "";
+        const renkler = { 'Standart': '#38bdf8', 'Deluxe': '#facc15', 'Suit': '#f87171', 'Kral Dairesi': '#4ade80' };
+        for (const [tip, veri] of Object.entries(kartlar)) {
+            row.innerHTML += `
+            <div class="col-12"><div class="room-card p-3 d-flex justify-content-between align-items-center" style="color: ${renkler[tip] || '#1e293b'};" onclick="detayAc('${tip}', 'rakip')">
+                <div class="d-flex align-items-center"><div class="me-3 opacity-50"><i class="fas fa-bed"></i></div><div><h6 class="fw-bold m-0">${tip}</h6><small class="text-muted">Analiz için tıkla</small></div></div>
+                <span class="badge bg-light border border-secondary py-2 px-3 rounded-pill">${veri.fiyat.toLocaleString('tr-TR')} ₺</span>
+            </div></div>`;
+        }
+    }
+
+    function pastaGrafigiCiz(kartlar) {
+        const ctx = document.getElementById('fiyatPastaGrafigi').getContext('2d');
+        if (pastaChart) pastaChart.destroy();
+        const labels = Object.keys(kartlar);
+        pastaChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{ data: Object.values(kartlar).map(k => k.fiyat), backgroundColor: ['#38bdf8', '#facc15', '#f87171', '#4ade80'], borderWidth: 0 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } },
+                onClick: (e, el) => { if(el.length > 0) detayAc(labels[el[0].index], 'grafik'); },
+                onHover: (e, el) => { e.native.target.style.cursor = el[0] ? 'pointer' : 'default'; }
+            }
+        });
+    }
+
+    // --- 4 AYRI GRAFİK ÇİZEN FONKSİYON ---
+    function senaryoGrafiginiCiz(data) {
+        const container = document.getElementById('senaryoGrafikleriContainer');
+        odaGrafikleri.forEach(c => c.destroy()); odaGrafikleri = []; container.innerHTML = "";
+        const renkler = { 'Standart': '#38bdf8', 'Deluxe': '#facc15', 'Suit': '#f87171', 'Kral Dairesi': '#4ade80' };
+
+        if (data.dagilim) {
+            for (const [tip, degerler] of Object.entries(data.dagilim)) {
+                const colDiv = document.createElement('div'); colDiv.className = 'col-md-6';
+                const chartId = `chart_${tip.replace(/\s/g, '')}`;
+                colDiv.innerHTML = `
+                    <div class="p-3 rounded-4 h-100 bg-light border">
+                        <div class="d-flex align-items-center mb-3"><span class="d-inline-block rounded-circle me-2" style="width:10px; height:10px; background-color: ${renkler[tip]}"></span><h6 class="m-0 fw-bold">${tip}</h6></div>
+                        <div style="height: 200px;"><canvas id="${chartId}"></canvas></div>
+                    </div>`;
+                container.appendChild(colDiv);
+
+                const ctx = document.getElementById(chartId).getContext('2d');
+                let gradient = ctx.createLinearGradient(0, 0, 0, 200);
+                gradient.addColorStop(0, (renkler[tip] || '#fff') + '40'); gradient.addColorStop(1, (renkler[tip] || '#fff') + '00');
+
+                const chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            { label: 'İyimser', data: degerler.map(v => Math.round(v * 1.2)), borderColor: '#4ade80', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, tension: 0.4 },
+                            { label: 'Realist', data: degerler, borderColor: renkler[tip] || '#fff', backgroundColor: gradient, borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 6 },
+                            { label: 'Kötümser', data: degerler.map(v => Math.round(v * 0.8)), borderColor: '#f87171', borderWidth: 1, borderDash: [3, 3], pointRadius: 0, tension: 0.4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
+                        scales: { x: { grid: { display: false }, ticks: { font: {size: 10}, color: '#64748b' } }, y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: {size: 10}, color: '#64748b', callback: v => (v/1000) + 'k' } } }
+                    }
+                });
+                odaGrafikleri.push(chart);
+            }
+        }
+    }
+
+    async function detayAc(tip, mod) {
+        const modal = new bootstrap.Modal(document.getElementById('odaDetayModal'));
+        const baslik = document.getElementById('modalOdaBaslik');
+        const dGrafik = document.getElementById('bolumGrafik'), dRakip = document.getElementById('bolumRakip');
+        dGrafik.classList.add('d-none'); dRakip.classList.add('d-none');
+
+        if (mod === 'grafik') { baslik.innerHTML = `<i class="fas fa-chart-line text-info me-2"></i> ${tip} - Trend Analizi`; dGrafik.classList.remove('d-none'); }
+        else { baslik.innerHTML = `<i class="fas fa-search-dollar text-warning me-2"></i> ${tip} - Piyasa Analizi`; dRakip.classList.remove('d-none'); }
+        modal.show();
+
+        try {
+            const res = await fetch(`/api/rakip-detay/${tip}`);
+            const data = await res.json();
+
+            if (mod === 'grafik') {
+                const ctx = document.getElementById('detayGrafigi').getContext('2d');
+                if(detayChart) detayChart.destroy();
+                let grad = ctx.createLinearGradient(0, 0, 0, 400); grad.addColorStop(0, 'rgba(56, 189, 248, 0.5)'); grad.addColorStop(1, 'rgba(56, 189, 248, 0.0)');
+                detayChart = new Chart(ctx, { 
+                    type: 'line', 
+                    data: { labels: data.grafik.labels, datasets: [{ label: 'Fiyat', data: data.grafik.datasets[0].data, borderColor: '#38bdf8', backgroundColor: grad, borderWidth: 3, fill: true, tension: 0.4, pointRadius: 0, pointHoverRadius: 8 }] },
+                    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: {display:false}, tooltip: { backgroundColor:'rgba(255,255,255,0.95)', titleColor:'#1e293b', bodyColor:'#1e293b', borderColor:'#e2e8f0', callbacks:{ label: c => c.parsed.y + ' ₺' } } }, scales: { x:{grid:{display:false}}, y:{grid:{color:'rgba(0,0,0,0.05)', borderDash:[5,5]}} } } 
+                });
+            } else {
+                const liste = document.getElementById('modalRakipListesi'); liste.innerHTML = "";
+                const bizFiyat = data.grafik.datasets[0].data.slice(-1)[0] || 0;
+                let gLabels = ["BİZ"], gData = [bizFiyat], gRenk = ["#38bdf8"];
+
+                data.rakipler.forEach(r => {
+                    gLabels.push(r.otel.split(' ')[0]); gData.push(r.fiyat); gRenk.push(r.fiyat > bizFiyat ? "#f87171" : "#facc15");
+                    let durum = r.fiyat > bizFiyat ? '<span class="badge bg-danger bg-opacity-10 text-danger">Pahalı</span>' : '<span class="badge bg-success bg-opacity-10 text-success">Uygun</span>';
+                    liste.innerHTML += `<tr><td>${r.otel}</td><td class="text-end fw-bold">${r.fiyat.toLocaleString()} ₺</td><td class="text-end">${durum}</td></tr>`;
+                });
+
+                const ctx2 = document.getElementById('rakipGrafigi').getContext('2d');
+                if(rakipChart) rakipChart.destroy();
+                rakipChart = new Chart(ctx2, { type: 'bar', data: { labels: gLabels, datasets: [{ data: gData, backgroundColor: gRenk, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} }, scales: { x:{grid:{display:false}}, y:{grid:{color:'rgba(255,255,255,0.05)'}} } } });
+            }
+        } catch(e) { console.error(e); }
+    }
+</script>
+</body>
+</html>

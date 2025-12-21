@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Otel KDS Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body class="bg-body">
+<div class="container py-4">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">Otel Karar Destek Sistemi</h1>
+            <p class="text-muted mb-0">6–12 aylık stratejik karar sürecini destekleyen, karar vermeyen dashboard</p>
+        </div>
+        <div class="d-flex flex-wrap gap-2 mt-3 mt-md-0">
+            <select id="monthSelector" class="form-select form-select-sm" style="min-width: 140px;">
+                <option value="6">Son 6 Ay</option>
+                <option value="12">Son 12 Ay</option>
+            </select>
+            <select id="scenarioSelector" class="form-select form-select-sm" style="min-width: 160px;">
+                <option value="realistic">Gerçekçi</option>
+                <option value="optimistic">İyimser</option>
+                <option value="pessimistic">Kötümser</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div id="kpiRow" class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card kpi-card border-success-subtle">
+                <div class="card-body">
+                    <p class="text-muted mb-1 small">Doluluk Oranı</p>
+                    <h3 class="fw-bold" id="kpiDoluluk">-</h3>
+                    <span class="badge bg-success-subtle text-success" id="kpiDolulukDelta">-</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card kpi-card border-primary-subtle">
+                <div class="card-body">
+                    <p class="text-muted mb-1 small">Toplam Gelir</p>
+                    <h3 class="fw-bold" id="kpiGelir">-</h3>
+                    <span class="badge bg-primary-subtle text-primary" id="kpiGelirDelta">-</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card kpi-card border-warning-subtle">
+                <div class="card-body">
+                    <p class="text-muted mb-1 small">Kar Marjı</p>
+                    <h3 class="fw-bold" id="kpiKarMarji">-</h3>
+                    <span class="badge bg-warning-subtle text-warning" id="kpiKarMarjiDelta">-</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card kpi-card border-danger-subtle">
+                <div class="card-body">
+                    <p class="text-muted mb-1 small">İptal Oranı</p>
+                    <h3 class="fw-bold" id="kpiIptal">-</h3>
+                    <span class="badge bg-danger-subtle text-danger" id="kpiIptalDelta">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 fw-bold">Aylık Doluluk Trend</h6>
+                        <small class="text-muted">Line chart</small>
+                    </div>
+                    <canvas id="dolulukTrendChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 fw-bold">Aylık Gelir Trend</h6>
+                        <small class="text-muted">Bar chart</small>
+                    </div>
+                    <canvas id="gelirTrendChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 fw-bold">6–12 Aylık Tahmin Aralığı</h6>
+                        <small class="text-muted">Doluluk / Gelir / Risk</small>
+                    </div>
+                    <canvas id="tahminAralikChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 fw-bold">Senaryo Karşılaştırması</h6>
+                        <small class="text-muted">İyimser / Gerçekçi / Kötümser</small>
+                    </div>
+                    <canvas id="senaryoChart" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="m-0 fw-bold">Risk Skoru</h6>
+                        <small class="text-muted">Belirsizlik & Uyarı</small>
+                    </div>
+                    <canvas id="riskChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <p class="small text-muted mb-2">Not: Bu arayüz etki analizi ve belirsizlik aralıkları sunar; karar vermez.</p>
+                    <ul class="small text-muted mb-0">
+                        <li>Aralık (min–max) ve belirsizlik seviyeleri gösterilir.</li>
+                        <li>Senaryo tercihi yöneticinin kararına bırakılır.</li>
+                        <li>Risk skorları uyarı niteliğindedir, kesin hüküm değildir.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="dashboard.js"></script>
+</body>
+</html>
+

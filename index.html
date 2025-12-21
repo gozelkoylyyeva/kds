@@ -3,115 +3,628 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Otel KDS - Yönetici Paneli</title>
+    <title>KDS - Yönetici Paneli</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.1.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <style>
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
-        .sidebar { min-height: 100vh; background: #2c3e50; color: white; padding-top: 20px; position: fixed; width: 16.66%; }
-        .sidebar a { color: #bdc3c7; text-decoration: none; display: block; padding: 15px 20px; transition: 0.3s; cursor: pointer; }
-        .sidebar a:hover, .sidebar a.active { background: #34495e; color: white; border-left: 4px solid #3498db; }
-        .content-area { margin-left: 16.66%; padding: 30px; width: 83.34%; }
-        .page-section { display: none; animation: fadeIn 0.4s; }
-        .page-section.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .card { border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-radius: 12px; margin-bottom: 20px; background: white; }
-        .currency-row { border-bottom: 1px solid #444; padding: 10px 0; cursor: pointer; transition: 0.2s; }
-        .currency-row:hover { background-color: #444; padding-left: 10px; border-radius: 5px; }
-        .oda-kutu { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
-        .oda-kutu:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-2 sidebar p-0">
-            <div class="text-center mb-4 fw-bold fs-4 text-white">🏨 Otel KDS</div>
-            <a onclick="sayfaDegistir('sayfa-ozet', this)" class="menu-link active"><i class="fas fa-home"></i> Genel Bakış</a>
-            <a onclick="sayfaDegistir('sayfa-simulasyon', this)" class="menu-link"><i class="fas fa-calculator"></i> Fiyat Simülasyonu</a>
-            <a onclick="sayfaDegistir('sayfa-rakip', this)" class="menu-link"><i class="fas fa-chart-line"></i> Rakip Analizi</a>
-            <a onclick="sayfaDegistir('sayfa-ik', this)" class="menu-link"><i class="fas fa-users"></i> İK Hesaplayıcı</a>
-            <a onclick="sayfaDegistir('sayfa-tahmin', this)" class="menu-link text-info"><i class="fas fa-crystal-ball"></i> Gelecek Tahmini</a>
-            <a onclick="sayfaDegistir('sayfa-odalar', this)" class="menu-link text-warning"><i class="fas fa-bed"></i> Oda Yönetimi</a>
-            <hr style="border-color: #555;">
-            <a onclick="excelIndir()" class="menu-link text-success"><i class="fas fa-file-excel"></i> Excel İndir</a>
-            <a onclick="window.print()" class="menu-link text-warning"><i class="fas fa-print"></i> PDF/Yazdır</a>
-            <a onclick="cikisYap()" class="menu-link text-danger mt-2"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</a>
+        <div class="col-md-2 sidebar p-0 d-flex flex-column" style="min-height: 100vh;">
+            <div class="text-center py-5 mb-4 px-3 border-bottom border-secondary">
+                <div class="d-flex align-items-center justify-content-center mb-3">
+                    <div class="position-relative">
+                        <div class="kpi-icon text-primary" style="width: 56px; height: 56px; margin-bottom: 0; background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2)); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);">
+                        <i class="fas fa-hotel"></i>
+                        </div>
+                        <div class="position-absolute top-0 start-100 translate-middle">
+                            <span class="badge bg-success rounded-pill" style="font-size: 0.6rem; padding: 2px 6px;">
+                                <i class="fas fa-circle" style="font-size: 0.4rem;"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-start px-2">
+                    <div class="fw-bold fs-5 text-primary m-0 mb-1" style="letter-spacing: -0.5px;">Otel KDS</div>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.7rem; font-weight: 500;">Enterprise Suite</small>
+                    <div class="badge bg-primary text-white px-3 py-1" style="font-size: 0.7rem; font-weight: 600; border-radius: 12px;">
+                        <i class="fas fa-star me-1"></i>v8.0 Pro
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-2 flex-grow-1">
+                <a onclick="window.sayfaDegistir('sayfa-ozet', this)" class="menu-link active">
+                    <i class="fas fa-chart-pie"></i>
+                    <span>Genel Bakış</span>
+                </a>
+                <a onclick="window.sayfaDegistir('sayfa-simulasyon', this)" class="menu-link">
+                    <i class="fas fa-brain"></i>
+                    <span>Strateji Simülatörü</span>
+                </a>
+                <a onclick="window.sayfaDegistir('sayfa-rapor', this)" class="menu-link">
+                    <i class="fas fa-file-alt"></i>
+                    <span>Aylık Rapor</span>
+                </a>
+            </div>
+            
+            <div class="pt-4 px-3 border-top border-secondary pb-4 mt-auto">
+                <button onclick="window.excelIndir()" class="btn btn-outline-success w-100 mb-3 shadow-sm" style="font-weight: 600; border-width: 2px;">
+                    <i class="fas fa-file-excel me-2"></i>Rapor İndir
+                </button>
+                <button onclick="window.cikisYap()" class="btn btn-outline-danger w-100 shadow-sm" style="font-weight: 600; border-width: 2px;">
+                    <i class="fas fa-sign-out-alt me-2"></i>Çıkış Yap
+                </button>
+            </div>
         </div>
 
-        <div class="col-md-10 content-area">
-            <div class="d-flex justify-content-end mb-4">
-                <div class="fw-bold text-secondary"><i class="fas fa-user-circle fs-4 me-2"></i> Yönetici Paneli</div>
-            </div>
-
+        <div class="col-md-10 content-area p-4">
+            
             <div id="sayfa-ozet" class="page-section active">
-                <h2 class="mb-4">📊 Genel Durum Özeti (TL)</h2>
-                <div class="row text-center mb-4">
-                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-primary"><h6 class="text-muted">Toplam Rezervasyon</h6><h3 class="text-primary" id="toplamRez">...</h3></div></div>
-                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-success"><h6 class="text-muted">Toplam Ciro</h6><h3 class="text-success" id="toplamCiro">...</h3></div></div>
-                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-warning"><h6 class="text-muted">Ort. Fiyat</h6><h3 class="text-warning" id="ortFiyat">...</h3></div></div>
-                    <div class="col-md-3"><div class="card p-3 border-start border-4 border-danger"><h6 class="text-muted">İptaller</h6><h3 class="text-danger" id="iptalSayisi">...</h3></div></div>
-                </div>
-                <div class="row">
-                    <div class="col-md-8"><div class="card p-4"><h4>📈 Aylık Trend</h4><div style="height:300px"><canvas id="dolulukGrafigi"></canvas></div></div></div>
-                    <div class="col-md-4"><div class="card p-4"><h4>🍂 Mevsimsel</h4><div style="height:300px"><canvas id="mevsimGrafigi"></canvas></div></div></div>
-                </div>
-            </div>
-
-            <div id="sayfa-simulasyon" class="page-section"><h2 class="mb-4 text-primary">🤖 Fiyat Simülasyonu</h2><div class="row"><div class="col-md-5"><div class="card p-4 border-top border-4 border-primary"><h5>Senaryo</h5><input type="number" id="fiyatDegisimi" class="form-control mb-3" placeholder="%"><button class="btn btn-primary w-100" onclick="fiyatSimulasyonuYap()">Hesapla</button><div id="simSonuc" class="mt-3"></div></div></div><div class="col-md-7"><div class="card p-4"><div style="height:300px"><canvas id="senaryoGrafigi"></canvas></div></div></div></div></div>
-            <div id="sayfa-rakip" class="page-section"><h2 class="mb-4 text-warning">⚔️ Rekabet</h2><div class="row"><div class="col-md-9"><div class="card p-4 border-warning border-top border-4"><div style="height:400px"><canvas id="rakipGrafigi"></canvas></div></div></div><div class="col-md-3"><div class="card bg-dark text-white p-3"><h5 class="text-warning">Piyasalar</h5><small class="text-muted mb-2 d-block"><i class="fas fa-mouse-pointer"></i> Detay için tıklayın</small><div id="dovizListesi">Loading...</div></div></div></div></div>
-            <div id="sayfa-ik" class="page-section"><h2 class="mb-4 text-info">👥 İK Planlama</h2><div class="row"><div class="col-md-4"><div class="card p-4 border-top border-4 border-info"><h5>Doluluk %</h5><input type="range" class="form-range" id="dolulukSlider" min="0" max="100" value="50" oninput="ikSimulasyonuYap(this.value)"><input type="number" id="dolulukInput" class="form-control" value="50"></div></div><div class="col-md-8"><div class="card p-4"><div class="row text-center"><div class="col-4 border p-2">Temizlik<br><b id="ikTemizlik">-</b></div><div class="col-4 border p-2">Servis<br><b id="ikServis">-</b></div><div class="col-4 border p-2 bg-dark text-white">TOPLAM<br><b id="ikToplam">-</b></div></div></div></div></div></div>
-            <div id="sayfa-tahmin" class="page-section"><h2 class="mb-4 text-info">🔮 Tahmin</h2><div class="card p-4 mb-4"><div style="height:300px"><canvas id="tahminGrafigi"></canvas></div></div><div class="card p-4"><table class="table table-bordered"><thead class="table-dark"><tr><th>Ay</th><th>Tahmini Talep</th><th>Aksiyon</th></tr></thead><tbody id="stratejiTablosu"></tbody></table></div></div>
-
-            <div id="sayfa-odalar" class="page-section">
-                <h2 class="mb-4 text-warning">🛎️ Oda Yönetimi</h2>
-                
-                <div class="card p-4 border-start border-5 border-success mb-4 shadow-sm">
-                    <div class="d-flex justify-content-between align-items-center mb-3"><h4 class="text-success"><i class="fas fa-plus-circle"></i> Yeni Rezervasyon</h4></div>
-                    <form id="rezervasyonForm" onsubmit="event.preventDefault(); rezervasyonEkle();">
-                        <div class="row g-3">
-                            <div class="col-md-2"><input type="date" id="inpTarih" class="form-control" required></div>
-                            <div class="col-md-2"><input type="number" id="inpSure" class="form-control" value="3" required></div>
-                            <div class="col-md-2"><input type="number" id="inpOda" class="form-control" placeholder="Oda No" required></div>
-                            <div class="col-md-2"><select id="inpTip" class="form-select"><option>Standart</option><option>Deluxe</option><option>Suit</option><option>Kral Dairesi</option></select></div>
-                            <div class="col-md-2"><input type="number" id="inpFiyat" class="form-control" placeholder="Fiyat" required></div>
-                            <div class="col-md-2"><button type="submit" class="btn btn-success w-100">KAYDET</button></div>
+                <div class="d-flex justify-content-between align-items-center mb-5">
+                    <div>
+                        <h1 class="page-title m-0 mb-2">
+                            <i class="fas fa-chart-line me-3 text-primary"></i>Genel Durum Özeti
+                        </h1>
+                        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+                            <i class="fas fa-info-circle me-2"></i>Anlık performans metrikleri ve analitik veriler
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <div class="badge bg-primary px-3 py-2 mb-2 d-block" style="font-size: 0.75rem; font-weight: 600;">
+                        <i class="fas fa-clock me-2"></i>
+                        <span id="currentTime"></span>
                         </div>
-                    </form>
-                </div>
-
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card p-4"><h4>Oda Tipleri</h4><div style="height:200px"><canvas id="odaTipiGrafigi"></canvas></div></div>
+                        <small class="text-muted d-block" style="font-size: 0.7rem;">
+                            <i class="fas fa-sync-alt me-1"></i>Canlı Güncelleme
+                        </small>
                     </div>
                 </div>
                 
-                <div class="card p-4">
-                    <h4>Kat Planı (101 - 150)</h4>
-                    <div class="row g-2" id="odaGrid"></div>
+                <!-- Gelişmiş KPI Kartları -->
+                <div class="row g-4 mb-4" id="gelismisKPI">
+                    <div class="col-lg-3 col-md-6">
+                        <div class="card kpi-card border-primary p-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="kpi-icon text-primary">
+                                    <i class="fas fa-bed"></i>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted d-block mb-1">Doluluk Oranı</small>
+                                    <h2 class="kpi-value m-0" id="kpiDoluluk">-</h2>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2" id="kpiDolulukDegisim">
+                                <i class="fas fa-arrow-up me-2 text-success"></i>
+                                <span class="small">Yükleniyor...</span>
+                            </div>
+                            <p class="small text-muted mb-0" id="kpiDolulukYorum" style="font-size: 0.75rem; line-height: 1.3;">-</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="card kpi-card border-success p-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="kpi-icon text-success">
+                                    <i class="fas fa-lira-sign"></i>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted d-block mb-1">Toplam Gelir</small>
+                                    <h2 class="kpi-value m-0" id="kpiGelir">-</h2>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2" id="kpiGelirDegisim">
+                                <i class="fas fa-arrow-up me-2 text-success"></i>
+                                <span class="small">Yükleniyor...</span>
+                            </div>
+                            <p class="small text-muted mb-0" id="kpiGelirYorum" style="font-size: 0.75rem; line-height: 1.3;">-</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="card kpi-card border-warning p-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="kpi-icon text-warning">
+                                    <i class="fas fa-chart-pie"></i>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted d-block mb-1">Kar Marjı</small>
+                                    <h2 class="kpi-value m-0" id="kpiKarMarji">-</h2>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2" id="kpiKarMarjiDegisim">
+                                <i class="fas fa-arrow-up me-2 text-success"></i>
+                                <span class="small">Yükleniyor...</span>
+                            </div>
+                            <p class="small text-muted mb-0" id="kpiKarMarjiYorum" style="font-size: 0.75rem; line-height: 1.3;">-</p>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6">
+                        <div class="card kpi-card border-danger p-4">
+                            <div class="d-flex align-items-center justify-content-between mb-3">
+                                <div class="kpi-icon text-danger">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted d-block mb-1">İptal Oranı</small>
+                                    <h2 class="kpi-value m-0" id="kpiIptalOrani">-</h2>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center mb-2" id="kpiIptalOraniDegisim">
+                                <i class="fas fa-arrow-down me-2 text-danger"></i>
+                                <span class="small">Yükleniyor...</span>
+                            </div>
+                            <p class="small text-muted mb-0" id="kpiIptalOraniYorum" style="font-size: 0.75rem; line-height: 1.3;">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Öneri Motoru Bölümü -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card p-4 border-info border-start border-4">
+                            <h5 class="mb-3"><i class="fas fa-lightbulb me-2 text-warning"></i>Karar Alternatifleri ve Analizler</h5>
+                            <p class="small text-muted mb-3"><i class="fas fa-info-circle me-1"></i>Bu bölüm karar alternatiflerini, olası etkileri ve riskleri sunar. Net karar vermez, sadece bilgi ve analiz sağlar.</p>
+                            <div id="oneriListesi" class="row g-3">
+                                <div class="col-12 text-center text-muted">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Analizler yükleniyor...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row g-4">
+                    <div class="col-lg-8">
+                        <div class="card p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-chart-area me-2 text-primary"></i>Aylık Rezervasyon Trendi</h5>
+                                    <small class="text-muted">Son 12 ay performans analizi</small>
+                                </div>
+                                <div class="badge bg-primary">Canlı Veri</div>
+                            </div>
+                            <div style="height:380px; position:relative;">
+                                <canvas id="dolulukGrafigi"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-leaf me-2 text-success"></i>Mevsimsel Dağılım</h5>
+                                    <small class="text-muted">Rezervasyon dağılımı</small>
+                                </div>
+                            </div>
+                            <div style="height:380px; position:relative;">
+                                <canvas id="mevsimGrafigi"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gelecek Tahminleri ve Stratejiler -->
+                <div class="row g-4 mt-4">
+                    <div class="col-12">
+                        <h4 class="mb-4"><i class="fas fa-crystal-ball me-2 text-primary"></i>Gelecek Tahminleri ve Stratejiler</h4>
+                    </div>
+                    
+                    <!-- Doluluk Tahmini -->
+                    <div class="col-lg-6">
+                        <div class="card p-4 border-primary border-start border-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-calendar-alt me-2 text-primary"></i>Doluluk Tahmini</h5>
+                                    <small class="text-muted">6 ay ve 12 ay ileriye dönük tahmin</small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="dolulukTahminiYukle(6)">6 Ay</button>
+                                    <button class="btn btn-outline-primary" onclick="dolulukTahminiYukle(12)">12 Ay</button>
+                                </div>
+                            </div>
+                            <div id="dolulukTahminiListesi" class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-sm">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Ay</th>
+                                            <th>Tahmini Doluluk</th>
+                                            <th>Yorum</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="dolulukTahminiTablosu">
+                                        <tr><td colspan="3" class="text-center text-muted">Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Fiyat Stratejisi -->
+                    <div class="col-lg-6">
+                        <div class="card p-4 border-warning border-start border-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-tag me-2 text-warning"></i>Fiyat Stratejisi Analizi</h5>
+                                    <small class="text-muted">6 ay ve 12 ay için fiyat alternatifleri ve etki analizi</small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-warning" onclick="fiyatStratejisiYukle(6)">6 Ay</button>
+                                    <button class="btn btn-outline-warning" onclick="fiyatStratejisiYukle(12)">12 Ay</button>
+                                </div>
+                            </div>
+                            <div id="fiyatStratejisiListesi" class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-sm">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Ay</th>
+                                            <th>Alternatif Değişim</th>
+                                            <th>Alternatif Fiyat Aralığı</th>
+                                            <th>Olası Etkiler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fiyatStratejisiTablosu">
+                                        <tr><td colspan="4" class="text-center text-muted">Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Gelir ve Kâr Tahmini -->
+                    <div class="col-lg-12">
+                        <div class="card p-4 border-success border-start border-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-chart-line me-2 text-success"></i>Gelir ve Kâr Tahmini</h5>
+                                    <small class="text-muted">6 ay ve 12 ay için gelir ve kâr projeksiyonları</small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-success" onclick="gelirKarTahminiYukle(6)">6 Ay</button>
+                                    <button class="btn btn-outline-success" onclick="gelirKarTahminiYukle(12)">12 Ay</button>
+                                </div>
+                            </div>
+                            <div id="gelirKarTahminiListesi" class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Dönem</th>
+                                            <th>Tahmini Gelir</th>
+                                            <th>Tahmini Kâr</th>
+                                            <th>Kâr Marjı</th>
+                                            <th>Değerlendirme</th>
+                                            <th>Yönetici Yorumu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="gelirKarTahminiTablosu">
+                                        <tr><td colspan="6" class="text-center text-muted">Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Personel İhtiyacı -->
+                    <div class="col-lg-6">
+                        <div class="card p-4 border-info border-start border-4">
+                            <h5 class="mb-3"><i class="fas fa-users me-2 text-info"></i>Personel İhtiyacı Tahmini</h5>
+                            <div id="personelIhtiyaciListesi" class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Departman</th>
+                                            <th>Mevcut</th>
+                                            <th>Değerlendirilebilir (Aralık)</th>
+                                            <th>Fark</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="personelIhtiyaciTablosu">
+                                        <tr><td colspan="4" class="text-center text-muted">Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="personelIhtiyaciYorumlari" class="mt-3"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Senaryo Analizi -->
+                    <div class="col-lg-12">
+                        <div class="card p-4 border-primary border-start border-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-project-diagram me-2 text-primary"></i>Senaryo Analizi</h5>
+                                    <small class="text-muted">İyimser, Gerçekçi ve Kötümser senaryo karşılaştırması</small>
+                                </div>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="senaryoAnaliziYukle(6)">6 Ay</button>
+                                    <button class="btn btn-outline-primary" onclick="senaryoAnaliziYukle(12)">12 Ay</button>
+                                </div>
+                            </div>
+                            <div id="senaryoAnaliziOneri" class="alert alert-info mb-3" style="display:none;"></div>
+                            <div id="senaryoAnaliziListesi" class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="bg-light">
+                                        <tr>
+                                            <th>Ay</th>
+                                            <th>Senaryo</th>
+                                            <th>Doluluk</th>
+                                            <th>Gelir</th>
+                                            <th>Kâr</th>
+                                            <th>Risk</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="senaryoAnaliziTablosu">
+                                        <tr><td colspan="6" class="text-center text-muted">Yükleniyor...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sayfa-simulasyon" class="page-section">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="page-title m-0"><i class="fas fa-brain me-3 text-primary"></i>Strateji Simülatörü & Premium Analytics</h1>
+                        <small class="text-muted">Fiyat, Kampanya ve Maliyet Analizi - AI Destekli Senaryo Planlama ve Gelişmiş Analitik</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <span class="badge bg-primary p-2 px-3"><i class="fas fa-bolt me-2"></i>Canlı Simülasyon</span>
+                        <span class="badge bg-success p-2 px-3"><i class="fas fa-database me-2"></i>Veri Kaydediliyor</span>
+                    </div>
+                </div>
+                
+                <!-- Strateji Simülatörü + Premium Analytics aynı sayfada -->
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="panel-simulasyon" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="d-flex flex-column gap-3 h-100">
+                            <div class="card p-4 border-start border-4 border-primary">
+                                <h6 class="text-primary fw-bold mb-3 text-uppercase"><i class="fas fa-tag me-2"></i>Fiyat Politikası</h6>
+                                <label class="text-muted small mb-2">Fiyat Değişimi (%)</label>
+                                <div class="input-group mb-2"><span class="input-group-text bg-light border-secondary"><i class="fas fa-percent"></i></span><input type="number" id="fiyatDegisimi" class="form-control border-secondary fw-bold" placeholder="Örn: 10"></div>
+                            </div>
+                            <button class="btn btn-primary w-100 py-3 fw-bold shadow-lg" onclick="window.fiyatSimulasyonuYap()"><i class="fas fa-rocket me-2"></i>SİMÜLE ET</button>
+                            <div id="aiOzetKutusu" class="mt-3"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-9">
+                        <div class="row g-3 mb-3" id="kpiRow" style="display:none;">
+                            <div class="col-md-4"><div class="card p-3 text-center border-bottom border-4 border-info"><small class="text-muted text-uppercase fw-bold">Tahmini Ciro</small><h3 class="text-white fw-bold m-0" id="kpiCiro">0 ₺</h3></div></div>
+                            <div class="col-md-4"><div class="card p-3 text-center border-bottom border-4" id="kpiKarCard"><small class="text-muted text-uppercase fw-bold">Net Kâr Farkı</small><h3 class="text-white fw-bold m-0" id="kpiFark">0 ₺</h3></div></div>
+                            <div class="col-md-4"><div class="card p-3 text-center border-bottom border-4 border-warning"><small class="text-muted text-uppercase fw-bold">Yeni Kâr Marjı</small><h3 class="text-white fw-bold m-0" id="kpiMarj">%0</h3></div></div>
+                        </div>
+                        <div class="row g-3" id="chartRow" style="display:none;">
+                            <div class="col-md-12 mb-3"><div class="card p-4"><h6 class="text-muted mb-3 text-uppercase fw-bold"><i class="fas fa-chart-bar me-2"></i>Senaryo Karşılaştırması - Net Kâr Analizi</h6><div style="height:350px"><canvas id="senaryoGrafigi"></canvas></div></div></div>
+                            <div class="col-md-6" id="ciroGrafikKolon" style="display:none;"><div class="card p-4"><h6 class="text-muted mb-3 text-uppercase fw-bold"><i class="fas fa-chart-line me-2"></i>Ciro Karşılaştırması</h6><div style="height:250px"><canvas id="ciroGrafigi"></canvas></div></div></div>
+                        </div>
+                        <!-- Senaryo Karşılaştırma Tablosu -->
+                        <div class="row mt-4" id="senaryoKarsilastirmaRow" style="display:none;">
+                            <div class="col-12">
+                                <div class="card p-4 border-success border-start border-4">
+                                    <h6 class="mb-3"><i class="fas fa-table me-2"></i>Senaryo Karşılaştırması</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Senaryo</th>
+                                                    <th>Beklenen Gelir</th>
+                                                    <th>Net Kâr</th>
+                                                    <th>Risk Seviyesi</th>
+                                                    <th>Değerlendirilebilir mi?</th>
+                                                    <th>Analiz Yorumu</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="senaryoKarsilastirmaTablosu">
+                                                <tr><td colspan="6" class="text-center text-muted">Simülasyon yapıldığında görünecek</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Detaylı Analiz ve Grafikler -->
+                        <div class="row g-4 mt-4">
+                            <div class="col-12">
+                                <h4 class="mb-4"><i class="fas fa-chart-line me-2 text-primary"></i>Detaylı Analiz ve Grafikler</h4>
+                            </div>
+                            
+                            <div class="col-lg-8">
+                                <div class="card p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-chart-line me-2 text-primary"></i>Gelir Trend Analizi</h5>
+                                            <small class="text-muted">Aylık gelir ve rezervasyon trendi</small>
+                                        </div>
+                                    </div>
+                                    <div style="height:350px; position:relative;">
+                                        <canvas id="gelirTrendGrafigi"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-4">
+                                <div class="card p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-chart-bar me-2 text-success"></i>Doluluk Oranı</h5>
+                                            <small class="text-muted">Aylık doluluk performansı</small>
+                                        </div>
+                                    </div>
+                                    <div style="height:350px; position:relative;">
+                                        <canvas id="dolulukOraniGrafigi"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-lg-6">
+                                <div class="card p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-balance-scale me-2 text-primary"></i>Fiyat Esneklik Analizi</h5>
+                                            <small class="text-muted">Fiyat değişimine göre talep ve gelir</small>
+                                        </div>
+                                    </div>
+                                    <div style="height:300px; position:relative;">
+                                        <canvas id="fiyatEsneklikGrafigi"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Analizi -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-lg-6">
+                                <div class="card p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-shield-alt me-2 text-danger"></i>Risk Analizi Uyarıları</h5>
+                                            <small class="text-muted">Senaryo bazlı risk değerlendirmesi (uyarı, karar değildir)</small>
+                                        </div>
+                                    </div>
+                                    <div style="height:300px; position:relative;">
+                                        <canvas id="riskAnaliziGrafigi"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-exclamation-triangle me-2 text-warning"></i>Gelecek Risk Tablosu</h5>
+                                            <small class="text-muted">6-12 ay risk skorları ve uyarılar (bilgi amaçlı)</small>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th>Ay</th>
+                                                    <th>Risk Skoru</th>
+                                                    <th>Risk Seviyesi</th>
+                                                    <th>Uyarı</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="riskAnaliziTablosu">
+                                                <tr><td colspan="4" class="text-center text-muted">Yükleniyor...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-lg-12">
+                                <div class="card p-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-bullseye me-2 text-info"></i>Tahmin Doğruluğu</h5>
+                                            <small class="text-muted">Gerçek vs tahmin karşılaştırması</small>
+                                        </div>
+                                    </div>
+                                    <div style="height:350px; position:relative;">
+                                        <canvas id="tahminDogruluguGrafigi"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="card p-4">
+                                    <h6 class="mb-3"><i class="fas fa-history me-2"></i>Kaydedilen Senaryolar</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tarih</th>
+                                                    <th>Senaryo Adı</th>
+                                                    <th>Tip</th>
+                                                    <th>Tahmini Kâr</th>
+                                                    <th>Durum</th>
+                                                    <th>İşlemler</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="senaryoListesi">
+                                                <tr><td colspan="5" class="text-center text-muted">Henüz senaryo kaydedilmedi</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                </div>
+            </div>
+
+            <div id="sayfa-rapor" class="page-section" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h1 class="page-title m-0"><i class="fas fa-file-alt me-3 text-primary"></i>Aylık Yönetici Raporu</h1>
+                        <small class="text-muted">Kapsamlı performans analizi ve karar önerileri</small>
+                    </div>
+                    <button onclick="window.raporIndir()" class="btn btn-outline-success">
+                        <i class="fas fa-download me-2"></i>PDF İndir
+                    </button>
+                </div>
+                
+                <div id="aylikRaporIcerik" class="row g-4">
+                    <div class="col-12 text-center text-muted p-5">
+                        <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+                        <p>Rapor yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+
+                            </div>
+                            </div>
+                        </div>
+
+<div class="modal fade" id="dovizModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="dovizModalBaslik"></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div style="height:350px"><canvas id="dovizDetayGrafigi"></canvas></div></div></div></div>    </div>
+
+    <!-- Premium Analytics Modal -->
+    <div class="modal fade" id="odaDetayModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <div><h5 class="modal-title fw-bold" id="modalOdaBaslik">Detay Analizi</h5><small class="text-muted">Kaynak: Booking DB & Google Hotels API</small></div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div id="bolumGrafik" class="d-none animate-fade">
+                        <div class="d-flex align-items-center mb-4"><div class="p-2 bg-info bg-opacity-10 rounded me-3"><i class="fas fa-history text-info"></i></div><h6 class="m-0 text-info">Fiyat Geçmişi (2023-2025)</h6></div>
+                        <div class="p-3 rounded-4 bg-light border"><div style="height: 400px;"><canvas id="detayGrafigi"></canvas></div></div>
+                    </div>
+                    <div id="bolumRakip" class="d-none animate-fade">
+                        <div class="row">
+                            <div class="col-lg-7 mb-4 mb-lg-0">
+                                <div class="d-flex align-items-center mb-4"><div class="p-2 bg-warning bg-opacity-10 rounded me-3"><i class="fas fa-balance-scale text-warning"></i></div><h6 class="m-0 text-warning">Pazar Karşılaştırması</h6></div>
+                                <div class="p-3 rounded-4 bg-light border"><div style="height: 300px;"><canvas id="rakipGrafigiAnalytics"></canvas></div></div>
+                            </div>
+                            <div class="col-lg-5">
+                                <h6 class="mb-3">Rakip Listesi (Google)</h6>
+                                <div class="table-responsive"><table class="table table-hover"><tbody id="modalRakipListesi"></tbody></table></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<div class="modal fade" id="dovizModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title" id="dovizModalBaslik">Döviz</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div style="height:350px"><canvas id="dovizDetayGrafigi"></canvas></div></div></div></div></div>
-<div class="modal fade" id="odaDetayModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-dark text-white"><h5 class="modal-title">Oda: <span id="mdlOdaNo"></span></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="row"><div class="col-md-6"><img id="mdlResim" src="" class="img-fluid rounded mb-3" style="width:100%;height:250px;object-fit:cover;"><div id="mdlDurumBadge" class="badge bg-success w-100 p-2"></div></div><div class="col-md-6"><h4 id="mdlTip" class="text-primary"></h4><h3 id="mdlFiyat" class="text-success"></h3><hr><h6>Özellikler:</h6><ul id="mdlOzellikler" class="small text-muted"></ul><div id="mdlRezBilgi" class="alert alert-warning mt-3" style="display:none;"><strong>Misafir:</strong><br>Giriş: <span id="mdlGiris"></span><br>Çıkış: <span id="mdlCikis"></span></div></div></div></div></div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    function sayfaDegistir(id, el) {
-        document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
-        document.getElementById(id).classList.add('active');
-        document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
-        el.classList.add('active');
-        localStorage.setItem('sonAcilanSayfa', id);
-        window.dispatchEvent(new Event('resize'));
-    }
-</script>
-<script src="app.js?v=gold_final_v4"></script>
+<script src="app.js"></script>
 </body>
 </html>
