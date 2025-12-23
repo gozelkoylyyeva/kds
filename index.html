@@ -162,6 +162,23 @@
                     </div>
                 </div>
                 
+                <!-- YENİ EKLENEN: Rakip Fiyat Analizi Grafiği -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card p-4 border-warning border-start border-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div>
+                                    <h5 class="mb-1"><i class="fas fa-balance-scale me-2 text-warning"></i>Rakip Fiyat Analizi</h5>
+                                    <small class="text-muted">Oda bazında anlık fiyat karşılaştırması (API Verisi)</small>
+                                </div>
+                            </div>
+                            <div style="height:350px; position:relative;">
+                                <canvas id="rakipFiyatGrafigi"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Öneri Motoru Bölümü -->
                 <div class="row mb-4">
                     <div class="col-12">
@@ -226,19 +243,8 @@
                                     <button class="btn btn-outline-primary" onclick="dolulukTahminiYukle(12)">12 Ay</button>
                                 </div>
                             </div>
-                            <div id="dolulukTahminiListesi" class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-sm">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th>Ay</th>
-                                            <th>Tahmini Doluluk</th>
-                                            <th>Yorum</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="dolulukTahminiTablosu">
-                                        <tr><td colspan="3" class="text-center text-muted">Yükleniyor...</td></tr>
-                                    </tbody>
-                                </table>
+                            <div id="dolulukTahminiListesi" style="height:350px; position:relative;">
+                                <canvas id="dolulukTahminiGrafigi"></canvas>
                             </div>
                         </div>
                     </div>
@@ -256,20 +262,8 @@
                                     <button class="btn btn-outline-warning" onclick="fiyatStratejisiYukle(12)">12 Ay</button>
                                 </div>
                             </div>
-                            <div id="fiyatStratejisiListesi" class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                                <table class="table table-sm">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th>Ay</th>
-                                            <th>Alternatif Değişim</th>
-                                            <th>Alternatif Fiyat Aralığı</th>
-                                            <th>Olası Etkiler</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="fiyatStratejisiTablosu">
-                                        <tr><td colspan="4" class="text-center text-muted">Yükleniyor...</td></tr>
-                                    </tbody>
-                                </table>
+                            <div id="fiyatStratejisiListesi" style="height:350px; position:relative;">
+                                <canvas id="fiyatStratejisiGrafigi"></canvas>
                             </div>
                         </div>
                     </div>
@@ -287,22 +281,8 @@
                                     <button class="btn btn-outline-success" onclick="gelirKarTahminiYukle(12)">12 Ay</button>
                                 </div>
                             </div>
-                            <div id="gelirKarTahminiListesi" class="table-responsive">
-                                <table class="table table-sm">
-                                    <thead class="bg-light">
-                                        <tr>
-                                            <th>Dönem</th>
-                                            <th>Tahmini Gelir</th>
-                                            <th>Tahmini Kâr</th>
-                                            <th>Kâr Marjı</th>
-                                            <th>Değerlendirme</th>
-                                            <th>Yönetici Yorumu</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="gelirKarTahminiTablosu">
-                                        <tr><td colspan="6" class="text-center text-muted">Yükleniyor...</td></tr>
-                                    </tbody>
-                                </table>
+                            <div id="gelirKarTahminiListesi" style="height:350px; position:relative;">
+                                <canvas id="gelirKarTahminiGrafigi"></canvas>
                             </div>
                         </div>
                     </div>
@@ -386,8 +366,12 @@
                         <div class="d-flex flex-column gap-3 h-100">
                             <div class="card p-4 border-start border-4 border-primary">
                                 <h6 class="text-primary fw-bold mb-3 text-uppercase"><i class="fas fa-tag me-2"></i>Fiyat Politikası</h6>
-                                <label class="text-muted small mb-2">Fiyat Değişimi (%)</label>
-                                <div class="input-group mb-2"><span class="input-group-text bg-light border-secondary"><i class="fas fa-percent"></i></span><input type="number" id="fiyatDegisimi" class="form-control border-secondary fw-bold" placeholder="Örn: 10"></div>
+                                <label for="fiyatDegisimiSlider" class="text-muted small mb-2 d-flex justify-content-between">Fiyat Değişimi <span id="fiyatDegisimiLabel" class="fw-bold text-primary">0%</span></label>
+                                <input type="range" class="form-range" min="-50" max="50" step="1" value="0" id="fiyatDegisimiSlider">
+                                <div class="input-group mt-2">
+                                    <input type="number" id="fiyatDegisimiInput" class="form-control form-control-sm fw-bold text-center" value="0" min="-50" max="50">
+                                    <span class="input-group-text bg-light border-secondary"><i class="fas fa-percent"></i></span>
+                                </div>
                             </div>
                             <button class="btn btn-primary w-100 py-3 fw-bold shadow-lg" onclick="window.fiyatSimulasyonuYap()"><i class="fas fa-rocket me-2"></i>SİMÜLE ET</button>
                             <div id="aiOzetKutusu" class="mt-3"></div>
@@ -452,8 +436,13 @@
                                 <div class="card p-4">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
-                                            <h5 class="mb-1"><i class="fas fa-chart-bar me-2 text-success"></i>Doluluk Oranı</h5>
-                                            <small class="text-muted">Aylık doluluk performansı</small>
+                                            <h5 class="mb-1"><i class="fas fa-chart-bar me-2 text-success"></i>Doluluk Analizi</h5>
+                                            <small class="text-muted">Geçmiş ve Gelecek Performans</small>
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-success active" onclick="dolulukGrafigiDegistir('gecmis', this)">Geçmiş</button>
+                                            <button class="btn btn-outline-success" onclick="dolulukGrafigiDegistir('tahmin-6', this)">Tahmin 6A</button>
+                                            <button class="btn btn-outline-success" onclick="dolulukGrafigiDegistir('tahmin-12', this)">Tahmin 12A</button>
                                         </div>
                                     </div>
                                     <div style="height:350px; position:relative;">
@@ -470,8 +459,12 @@
                                 <div class="card p-4">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
-                                            <h5 class="mb-1"><i class="fas fa-balance-scale me-2 text-primary"></i>Fiyat Esneklik Analizi</h5>
-                                            <small class="text-muted">Fiyat değişimine göre talep ve gelir</small>
+                                            <h5 class="mb-1"><i class="fas fa-balance-scale me-2 text-primary"></i>Fiyat Analizi</h5>
+                                            <small class="text-muted">Esneklik ve Trendler</small>
+                                        </div>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary active" onclick="fiyatGrafigiDegistir('analiz', this)">Esneklik Analizi</button>
+                                            <button class="btn btn-outline-primary" onclick="fiyatGrafigiDegistir('gecmis', this)">Geçmiş Trend</button>
                                         </div>
                                     </div>
                                     <div style="height:300px; position:relative;">
@@ -575,9 +568,12 @@
                         <h1 class="page-title m-0"><i class="fas fa-file-alt me-3 text-primary"></i>Aylık Yönetici Raporu</h1>
                         <small class="text-muted">Kapsamlı performans analizi ve karar önerileri</small>
                     </div>
-                    <button onclick="window.raporIndir()" class="btn btn-outline-success">
-                        <i class="fas fa-download me-2"></i>PDF İndir
-                    </button>
+                    <div class="d-flex align-items-center gap-3">
+                        <select id="aylikRaporAySecici" class="form-select" style="width: 200px;" onchange="aylikRaporuYukle(this.value)"></select>
+                        <button onclick="window.raporIndir()" class="btn btn-outline-success">
+                            <i class="fas fa-download me-2"></i>PDF İndir
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="aylikRaporIcerik" class="row g-4">
@@ -624,7 +620,66 @@
         </div>
     </div>
 
+    <!-- Fiyat Detay Modalı (Geçmiş Trend Tıklaması İçin) -->
+    <div class="modal fade" id="fiyatDetayModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="fiyatDetayModalBaslik">Fiyat Dağılımı</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div style="height:350px"><canvas id="fiyatDetayGrafigiCanvas"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
+
+<!-- Rakip Fiyat Grafiği Scripti -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Sadece Genel Bakış sayfasındaysak çalışsın
+    const ctx = document.getElementById('rakipFiyatGrafigi');
+    if (ctx) {
+        fetch('/api/competitor-prices')
+            .then(response => response.json())
+            .then(data => {
+                new Chart(ctx.getContext('2d'), {
+                    type: 'bar',
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top' },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.dataset.label + ': ' + context.parsed.y.toLocaleString('tr-TR') + ' ₺';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { 
+                                beginAtZero: true,
+                                grid: { color: 'rgba(0,0,0,0.05)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(err => console.error('Rakip fiyat verileri yüklenemedi:', err));
+    }
+});
+</script>
 </body>
 </html>

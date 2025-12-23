@@ -19,9 +19,14 @@ window.sayfaDegistir = function(id, el) {
     // Genel Bakış sayfası açıldığında grafikleri ve tahminleri yükle
     if(id === 'sayfa-ozet') {
         setTimeout(() => {
-            kararDestekGrafikleriniYukle();
-            // Tahminleri yükle
-            dolulukTahminiYukle(6);
+            // Ana dashboard grafikleri
+            grafigiCiz();
+            mevsimAnaliziCiz();
+            // KPI'lar ve Öneriler
+            gelismisKPILeriYukle();
+            onerileriYukle();
+            // Tahminler ve Analizler
+            rakipFiyatAnaliziYukle();
             fiyatStratejisiYukle(6);
             gelirKarTahminiYukle(6);
             personelIhtiyaciYukle();
@@ -32,8 +37,11 @@ window.sayfaDegistir = function(id, el) {
     
     // Aylık rapor sayfası açıldığında raporu yükle
     if(id === 'sayfa-rapor') {
-        setTimeout(() => {
-            aylikRaporuYukle();
+        setTimeout(async () => {
+            // Önce ay listesini doldur, sonra en güncel raporu yükle
+            await aylikRaporAyListesiDoldur();
+            const aySecici = document.getElementById('aylikRaporAySecici');
+            if (aySecici) aylikRaporuYukle(aySecici.value);
         }, 300);
     }
     
@@ -42,6 +50,9 @@ window.sayfaDegistir = function(id, el) {
         setTimeout(() => {
             // Detaylı analiz grafiklerini yükle
             kararDestekGrafikleriniYukle();
+            
+            // Taslak arayüzünü ekle
+            if(typeof simulasyonTaslakArayuzuEkle === 'function') simulasyonTaslakArayuzuEkle();
             
             // Tab değiştiğinde analytics'i yükle
             const analyticsTab = document.getElementById('tab-analytics');
@@ -60,33 +71,71 @@ window.excelIndir = async function() { alert("Rapor hazırlanıyor..."); };
 
 document.addEventListener('DOMContentLoaded', () => {
     try { 
+        // Genel, sayfadan bağımsız yüklemeler
         verileriGetir(); 
-        setTimeout(() => { grafigiCiz(); }, 500); 
         dovizKurlariniGetir(); 
-        mevsimAnaliziCiz(); 
         updateClock();
         setInterval(updateClock, 1000);
         
-        // Yeni özellikler
-        gelismisKPILeriYukle();
-        onerileriYukle();
+        // Kayıtlı senaryo listesini her zaman yükle
+        senaryoListesiniGetir();
         
-        // Son açılan sayfayı kontrol et
-        const sonSayfa = localStorage.getItem('sonAcilanSayfa');
-        if(sonSayfa === 'sayfa-ozet') {
-            setTimeout(() => {
-                kararDestekGrafikleriniYukle();
-            }, 800);
-        } else if(sonSayfa === 'sayfa-simulasyon') {
-            setTimeout(() => {
-                kararDestekGrafikleriniYukle();
-            }, 800);
-        } else if(sonSayfa === 'sayfa-rapor') {
-            setTimeout(() => {
-                aylikRaporuYukle();
-            }, 800);
+        // Son açılan sayfayı yükle veya varsayılan olarak Genel Bakış'ı aç
+        const sonSayfaId = localStorage.getItem('sonAcilanSayfa') || 'sayfa-ozet';
+        const menuLink = document.querySelector(`.menu-link[onclick*="'${sonSayfaId}'"]`);
+        
+        // sayfaDegistir fonksiyonu ilgili sayfanın tüm verilerini zaten yüklüyor.
+        window.sayfaDegistir(sonSayfaId, menuLink);
+
+        // Strateji Simülatörü - Fiyat Değişimi Slider/Input senkronizasyonu
+        const slider = document.getElementById('fiyatDegisimiSlider');
+        const input = document.getElementById('fiyatDegisimiInput');
+        const label = document.getElementById('fiyatDegisimiLabel');
+
+        if (slider && input && label) {
+            const syncValues = (source) => {
+                const value = source.value;
+                slider.value = value;
+                input.value = value;
+                label.textContent = `${value}%`;
+            };
+            slider.addEventListener('input', () => syncValues(slider));
+            input.addEventListener('input', () => syncValues(input));
         }
-    } catch(e) { console.log(e); }
+        
+        // Strateji Simülatörü - Pazarlama Bütçesi Slider/Input senkronizasyonu
+        const pSlider = document.getElementById('pazarlamaButcesiSlider');
+        const pInput = document.getElementById('pazarlamaButcesiInput');
+        const pLabel = document.getElementById('pazarlamaButcesiLabel');
+
+        if (pSlider && pInput && pLabel) {
+            const syncPValues = (source) => {
+                const value = source.value;
+                pSlider.value = value;
+                pInput.value = value;
+                pLabel.textContent = formatPara(value);
+            };
+            pSlider.addEventListener('input', () => syncPValues(pSlider));
+            pInput.addEventListener('input', () => syncPValues(pInput));
+        }
+        
+        // Strateji Simülatörü - Personel Sayısı Slider/Input senkronizasyonu
+        const perSlider = document.getElementById('personelSayisiSlider');
+        const perInput = document.getElementById('personelSayisiInput');
+        const perLabel = document.getElementById('personelSayisiLabel');
+
+        if (perSlider && perInput && perLabel) {
+            const syncPerValues = (source) => {
+                const value = source.value;
+                perSlider.value = value;
+                perInput.value = value;
+                perLabel.textContent = value;
+            };
+            perSlider.addEventListener('input', () => syncPerValues(perSlider));
+            perInput.addEventListener('input', () => syncPerValues(perInput));
+        }
+        
+    } catch(e) { console.error("Sayfa başlatma hatası:", e); }
 });
 
 function updateClock() {
@@ -107,176 +156,6 @@ window.dovizDetayAc = async function(kod, isim) {
     }
     const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 300); gradient.addColorStop(0, 'rgba(250, 204, 21, 0.5)'); gradient.addColorStop(1, 'rgba(250, 204, 21, 0)'); 
     window.dovizChart = new Chart(ctx, { type: 'line', data: { labels: data.map(d => d.tarih), datasets: [{ label: `${kod} Kuru`, data: data.map(d => d.deger), borderColor: '#facc15', backgroundColor: gradient, borderWidth: 2, pointRadius: 0, fill: true, tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, interaction: { mode: 'nearest', axis: 'x', intersect: false }, scales: { x: { ticks: { color: '#bdc3c7' }, grid: { display:false } }, y: { ticks: { color: '#bdc3c7' }, grid: { color: '#34495e' } } } } }); 
-};
-
-
-window.fiyatSimulasyonuYap = async function() { 
-    let val = document.getElementById('fiyatDegisimi').value; 
-    const kampanyaTuru = 'yok'; // Pazarlama seçimi kaldırıldı
-    if (val === "") val = 0; 
-    
-    document.getElementById('aiOzetKutusu').innerHTML = '<div class="text-white text-center small mt-2"><i class="fas fa-circle-notch fa-spin"></i> Hesaplıyor...</div>'; 
-    
-    const res = await fetch('/api/simulasyon', { 
-        method:'POST', 
-        headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({fiyatDegisimi:parseFloat(val), kampanyaTuru: kampanyaTuru}) 
-    }); 
-    const data = await res.json(); 
-    
-    // KPI Kartları
-    document.getElementById('kpiRow').style.display = 'flex'; 
-    document.getElementById('kpiCiro').innerText = formatPara(data.realist.ciro); 
-    const fEl = document.getElementById('kpiFark'); 
-    fEl.innerHTML = (data.realist.fark >= 0 ? '+' : '') + formatPara(data.realist.fark); 
-    fEl.className = `fw-bold m-0 display-6 ${data.realist.fark>=0?'text-success':'text-danger'}`; 
-    document.getElementById('kpiKarCard').className = `card p-3 text-center border-bottom border-4 ${data.realist.fark>=0?'border-success':'border-danger'}`; 
-    document.getElementById('kpiMarj').innerText = `%${data.realist.marj ? data.realist.marj.toFixed(1) : 0}`;
-    
-    document.getElementById('aiOzetKutusu').innerHTML = `<div class="alert bg-dark border ${data.realist.fark>=0?'border-success':'border-danger'} text-white p-3 shadow mt-3"><div class="mb-1 fw-bold text-${data.realist.fark>=0?'success':'danger'}">${data.ai_mesaj}</div></div>`; 
-    document.getElementById('chartRow').style.display = 'flex';
-    
-    // 1. Net Kâr Karşılaştırması Grafiği
-    const ctxBar = document.getElementById('senaryoGrafigi'); 
-    if(window.senaryoChart instanceof Chart) window.senaryoChart.destroy(); 
-    window.senaryoChart = new Chart(ctxBar, { 
-        type: 'bar', 
-        data: { 
-            labels: ['Kötümser', 'Mevcut', 'Gerçekçi', 'İyimser'], 
-            datasets: [{ 
-                label: 'Net Kâr (TL)', 
-                data: [data.kotumser.kar, data.mevcut.kar, data.realist.kar, data.iyimser.kar], 
-                backgroundColor: ['#ef4444', '#64748b', '#3b82f6', '#22c55e'], 
-                borderRadius: 8,
-                borderWidth: 2, 
-                borderColor: '#1e293b'
-            }] 
-        }, 
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false, 
-            plugins: { 
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return formatPara(context.parsed.y);
-                        }
-                    }
-                }
-            }, 
-            scales: { 
-                y: { 
-                    ticks: { 
-                        color: '#bdc3c7',
-                        callback: function(value) {
-                            return formatPara(value);
-                        }
-                    }, 
-                    grid: { color: '#334155' } 
-                },
-                x: {
-                    ticks: { color: '#fff', font: {weight:'bold'} },
-                    grid: { display: false }
-                }
-            } 
-        } 
-    });
-    
-    // 2. Ciro Karşılaştırması Grafiği
-    const ctxCiro = document.getElementById('ciroGrafigi'); 
-    if(!ctxCiro) {
-        console.warn('ciroGrafigi canvas bulunamadı');
-        return;
-    }
-    if(window.ciroChart instanceof Chart) window.ciroChart.destroy();
-    window.ciroChart = new Chart(ctxCiro, {
-        type: 'line',
-        data: {
-            labels: ['Kötümser', 'Mevcut', 'Gerçekçi', 'İyimser'],
-            datasets: [{
-                label: 'Ciro (TL)',
-                data: [data.kotumser.ciro, data.mevcut.ciro, data.realist.ciro, data.iyimser.ciro],
-                borderColor: '#f59e0b',
-                backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 6,
-                pointBackgroundColor: '#f59e0b'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return formatPara(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    ticks: { 
-                        color: '#bdc3c7',
-                        callback: function(value) {
-                            return formatPara(value);
-                        }
-                    },
-                    grid: { color: '#334155' }
-                },
-                x: {
-                    ticks: { color: '#fff', font: {weight:'bold'} },
-                    grid: { display: false }
-                }
-            }
-        }
-    });
-    
-    // 3. Kâr Marjı Grafiği
-    const ctxMarj = document.getElementById('marjGrafigi');
-    if(window.marjChart instanceof Chart) window.marjChart.destroy();
-    window.marjChart = new Chart(ctxMarj, {
-        type: 'doughnut',
-        data: {
-            labels: ['Kötümser', 'Mevcut', 'Gerçekçi', 'İyimser'],
-            datasets: [{
-                data: [
-                    data.kotumser.marj || 0,
-                    data.mevcut.marj || 0,
-                    data.realist.marj || 0,
-                    data.iyimser.marj || 0
-                ],
-                backgroundColor: ['#ef4444', '#64748b', '#3b82f6', '#22c55e'],
-                borderWidth: 2,
-                borderColor: '#1e293b'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { color: 'white', usePointStyle: true }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return '%' + context.parsed.toFixed(1);
-                        }
-                    }
-                }
-            }
-        } 
-    }); 
-    
-    // Senaryo Listesini Güncelle
-    senaryoListesiniGetir();
 };
 
 // Senaryo listesini çek ve göster
@@ -334,11 +213,6 @@ async function senaryoListesiniGetir() {
         console.error('Senaryo listesi yüklenemedi:', e);
     }
 }
-
-// Sayfa yüklendiğinde senaryo listesini çek
-document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => senaryoListesiniGetir(), 1000);
-});
 
 async function mevsimAnaliziCiz() { 
     try {
@@ -602,6 +476,101 @@ async function kararDestekKPILeriYukle() {
     }
 }
 
+window.dolulukGrafigiDegistir = function(tip, btn) {
+    if (btn) {
+        const group = btn.parentElement;
+        group.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    
+    if (tip === 'gecmis') {
+        dolulukOraniGrafigiCiz();
+    } else if (tip === 'tahmin-6') {
+        dolulukTahminiSimulasyonCiz(6);
+    } else if (tip === 'tahmin-12') {
+        dolulukTahminiSimulasyonCiz(12);
+    }
+};
+
+async function dolulukTahminiSimulasyonCiz(periyot = 6) {
+    try {
+        const res = await fetch(`/api/doluluk-tahmini?periyot=${periyot}`);
+        if(!res.ok) throw new Error('API hatası');
+        const data = await res.json();
+        
+        const ctx = document.getElementById('dolulukOraniGrafigi');
+        if (!ctx) return;
+
+        if (kararDestekCharts.dolulukOrani) kararDestekCharts.dolulukOrani.destroy();
+
+        const labels = data.tahminler.map(t => t.ay);
+        const ortalamaData = data.tahminler.map(t => t.tahmini_doluluk_araligi?.ortalama || t.tahmini_doluluk || 0);
+        
+        // Nokta renklerini belirle
+        const pointColors = ortalamaData.map(val => {
+            if (val >= 75) return '#10b981'; // Yeşil
+            if (val >= 50) return '#f59e0b'; // Sarı
+            return '#ef4444'; // Kırmızı
+        });
+
+        kararDestekCharts.dolulukOrani = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Tahmini Doluluk (%)',
+                    data: ortalamaData,
+                    // Çizgi rengini segmentlere göre değiştir
+                    segment: {
+                        borderColor: ctx => {
+                            const val = ctx.p1.parsed.y;
+                            if (val >= 75) return '#10b981';
+                            if (val >= 50) return '#f59e0b';
+                            return '#ef4444';
+                        },
+                        backgroundColor: ctx => {
+                            const val = ctx.p1.parsed.y;
+                            return val >= 75 ? 'rgba(16, 185, 129, 0.2)' : (val >= 50 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)');
+                        }
+                    },
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 6,
+                    pointBackgroundColor: pointColors,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    borderDash: [5, 5]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const index = context.dataIndex;
+                                const item = data.tahminler[index];
+                                let label = `Tahmin: ${context.parsed.y.toFixed(1)}%`;
+                                if (item && item.tahmini_doluluk_araligi) {
+                                    label += ` (Aralık: %${item.tahmini_doluluk_araligi.min} - %${item.tahmini_doluluk_araligi.max})`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                }
+            }
+        });
+    } catch(e) { console.error('Simülasyon tahmin grafiği hatası:', e); }
+}
+
 async function gelirTrendGrafigiCiz() {
     try {
         const res = await fetch('/api/gelir-trend');
@@ -752,6 +721,126 @@ async function dolulukOraniGrafigiCiz() {
         });
     } catch(e) { console.error('Doluluk oranı hatası:', e); }
 }
+
+window.fiyatGrafigiDegistir = function(tip, btn) {
+    if (btn) {
+        const group = btn.parentElement;
+        group.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    
+    if (tip === 'analiz') {
+        fiyatEsneklikGrafigiCiz();
+    } else {
+        fiyatGecmisTrendiCiz();
+    }
+};
+
+async function fiyatGecmisTrendiCiz() {
+    try {
+        const res = await fetch('/api/gelir-trend');
+        if(!res.ok) throw new Error('API hatası');
+        const data = await res.json();
+        
+        const ctx = document.getElementById('fiyatEsneklikGrafigi');
+        if (!ctx) return;
+
+        if (kararDestekCharts.fiyatEsneklik) kararDestekCharts.fiyatEsneklik.destroy();
+
+        // ADR (Ortalama Günlük Fiyat) Hesapla
+        const labels = data.map(d => d.ay).reverse();
+        const adrData = data.map(d => {
+            const rev = parseFloat(d.toplam_gelir) || 0;
+            const count = parseInt(d.rezervasyon_sayisi) || 1;
+            return count > 0 ? rev / count : 0;
+        }).reverse();
+
+        kararDestekCharts.fiyatEsneklik = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ortalama Oda Fiyatı (ADR)',
+                    data: adrData,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#8b5cf6',
+                    pointBorderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Ort. Fiyat: ${formatPara(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: false, 
+                        ticks: { color: '#94a3b8', callback: v => formatPara(v) }, 
+                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                    },
+                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                }
+            }
+        });
+    } catch(e) { console.error('Fiyat geçmiş trend hatası:', e); }
+}
+
+window.fiyatDetayGoster = function(ay) {
+    const modalEl = document.getElementById('fiyatDetayModal');
+    if(!modalEl) return;
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById('fiyatDetayModalBaslik').innerHTML = `<i class="fas fa-calendar-alt text-primary me-2"></i>${ay} - Oda Tipi Fiyat Dağılımı`;
+    modal.show();
+    
+    const ctx = document.getElementById('fiyatDetayGrafigiCanvas');
+    if (window.fiyatDetayChart instanceof Chart) window.fiyatDetayChart.destroy();
+
+    // Simüle edilmiş veri (Gerçek uygulamada API'den çekilebilir)
+    const odaTipleri = ['Standart', 'Deluxe', 'Suit', 'Kral Dairesi'];
+    // Rastgele mantıklı fiyatlar üret
+    const bazFiyat = Math.floor(Math.random() * 500) + 1000;
+    const fiyatlar = [bazFiyat, bazFiyat * 1.5, bazFiyat * 2.5, bazFiyat * 5];
+
+    window.fiyatDetayChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: odaTipleri,
+            datasets: [{
+                label: 'Ortalama Fiyat (TL)',
+                data: fiyatlar,
+                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'],
+                borderRadius: 6,
+                barThickness: 50
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    ticks: { callback: v => formatPara(v) },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+};
 
 async function fiyatEsneklikGrafigiCiz() {
     try {
@@ -1181,13 +1270,121 @@ async function onerileriYukle() {
  * - Risk skorları "uyarı" olarak yorumlanır, karar olarak sunulmaz
  * - Senaryo tercihi yöneticiye aittir
  */
-async function aylikRaporuYukle() {
+window.aylikRaporKPIDetayGoster = async function(kpiAd) {
+    let modal = document.getElementById('kpiDetayModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'kpiDetayModal';
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="kpiDetayBaslik">KPI Analizi</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div style="height: 350px;">
+                            <canvas id="kpiDetayChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+    
+    document.getElementById('kpiDetayBaslik').innerHTML = `<i class="fas fa-chart-area text-primary me-2"></i>${kpiAd} - Detaylı Analiz`;
+    new bootstrap.Modal(modal).show();
+    
+    const ctx = document.getElementById('kpiDetayChart').getContext('2d');
+    if (window.kpiDetayChart instanceof Chart) window.kpiDetayChart.destroy();
+    
+    // Varsayılan/Demo veriler (API hatası durumunda kullanılır)
+    let labels = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    let data = Array.from({length: 12}, () => Math.floor(Math.random() * 40) + 60);
+
     try {
-        const res = await fetch('/api/aylik-rapor');
+        // Gerçek verileri API'den çek
+        const res = await fetch(`/api/kpi-detay?kpi=${encodeURIComponent(kpiAd)}`);
+        if (res.ok) {
+            const result = await res.json();
+            // API'den { labels: [...], data: [...] } formatında veri bekleniyor
+            if (result && result.labels && result.data) {
+                labels = result.labels;
+                data = result.data;
+            }
+        }
+    } catch (e) { console.warn('KPI detay verisi çekilemedi, demo veri gösteriliyor:', e); }
+    
+    const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+    window.kpiDetayChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: kpiAd,
+                data: data,
+                borderColor: '#3b82f6',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#3b82f6',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: false, grid: { color: 'rgba(0,0,0,0.05)' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+};
+
+async function aylikRaporAyListesiDoldur() {
+    const selectEl = document.getElementById('aylikRaporAySecici');
+    if (!selectEl) return;
+
+    // Gerçek uygulamada bu veri API'den dinamik olarak çekilmelidir.
+    // Örnek: const aylar = await fetch('/api/rapor-aylari').then(res => res.json());
+    const aylar = [
+        { value: '2017-08', text: 'Ağustos 2017' },
+        { value: '2017-07', text: 'Temmuz 2017' },
+        { value: '2017-06', text: 'Haziran 2017' },
+        { value: '2017-05', text: 'Mayıs 2017' },
+        { value: '2017-04', text: 'Nisan 2017' },
+    ];
+
+    selectEl.innerHTML = aylar.map(ay => `<option value="${ay.value}">${ay.text}</option>`).join('');
+}
+
+async function aylikRaporuYukle(ay = null) {
+    const container = document.getElementById('aylikRaporIcerik');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="col-12 text-center text-muted p-5">
+            <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+            <p>Rapor yükleniyor...</p>
+        </div>
+    `;
+
+    const apiUrl = ay ? `/api/aylik-rapor?ay=${ay}` : '/api/aylik-rapor';
+
+    try {
+        const res = await fetch(apiUrl);
         if(!res.ok) return;
         const data = await res.json();
         
-        const container = document.getElementById('aylikRaporIcerik');
         container.innerHTML = `
             <div class="col-12 mb-4">
                 <div class="card p-4">
@@ -1201,10 +1398,10 @@ async function aylikRaporuYukle() {
                 <div class="card p-4">
                     <h5 class="mb-3"><i class="fas fa-chart-line me-2"></i>En Önemli 5 KPI</h5>
                     <div class="row g-3">
-                        ${data.en_onemli_kpi.map(kpi => `
+                        ${(data.en_onemli_kpi || []).map(kpi => `
                             <div class="col-md-6">
-                                <div class="card border-primary border-start border-4 p-3">
-                                    <h6 class="mb-2">${kpi.ad}</h6>
+                                <div class="card border-primary border-start border-4 p-3 h-100" style="cursor: pointer; transition: transform 0.2s;" onclick="window.aylikRaporKPIDetayGoster('${kpi.ad}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                                    <h6 class="mb-2">${kpi.ad} <i class="fas fa-chart-line float-end text-primary opacity-50"></i></h6>
                                     <h4 class="text-primary mb-2">${kpi.deger}</h4>
                                     <small class="text-muted d-block mb-2">Değişim: ${kpi.degisim}</small>
                                     <p class="text-muted small mb-0">${kpi.yorum}</p>
@@ -1218,7 +1415,7 @@ async function aylikRaporuYukle() {
             <div class="col-12 mb-4">
                 <div class="card p-4">
                     <h5 class="mb-3"><i class="fas fa-chart-bar me-2"></i>Grafik Özetleri</h5>
-                    ${data.grafik_ozetleri.map(ozet => `
+                    ${(data.grafik_ozetleri || []).map(ozet => `
                         <div class="card border-info border-start border-4 p-3 mb-3">
                             <h6 class="mb-2">${ozet.grafik_adi}</h6>
                             <p class="text-muted mb-0">${ozet.ozet}</p>
@@ -1231,7 +1428,7 @@ async function aylikRaporuYukle() {
                 <div class="card p-4">
                     <h5 class="mb-3"><i class="fas fa-lightbulb me-2"></i>Karar Alternatifleri ve Analizler</h5>
                     <p class="small text-muted mb-3"><i class="fas fa-info-circle me-1"></i>Bu bölüm karar alternatiflerini, olası etkileri ve riskleri sunar. Net karar vermez, sadece bilgi ve analiz sağlar.</p>
-                    ${data.otomatik_karar_onerileri.map((oneri, idx) => `
+                    ${(data.otomatik_karar_onerileri || []).map((oneri, idx) => `
                         <div class="card border-warning border-start border-4 p-3 mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="badge bg-warning">${oneri.tip.toUpperCase()}</span>
@@ -1247,10 +1444,11 @@ async function aylikRaporuYukle() {
             <div class="col-12">
                 <div class="card p-4">
                     <h5 class="mb-3"><i class="fas fa-exclamation-triangle me-2"></i>Risk Analizi Uyarısı</h5>
-                    <div class="card border-danger border-start border-4 p-4">
+                    <div class="card border-danger border-start border-4 p-4">`
+                        + (data.risk_degerlendirmesi ? `
                         <h4 class="text-danger mb-2">Risk Analizi Skoru: ${data.risk_degerlendirmesi.skor}/100</h4>
                         <h5 class="text-warning mb-3">Risk Seviyesi: ${data.risk_degerlendirmesi.seviye}</h5>
-                        <p class="mb-2"><strong>Uyarı:</strong> ${data.risk_degerlendirmesi.uyari}</p>
+                        <p class="mb-2"><strong>Uyarı:</strong> ${data.risk_degerlendirmesi.uyari}</p>` : '<p>Risk verisi bulunamadı.</p>') + `
                         <small class="text-muted d-block"><i class="fas fa-info-circle me-1"></i>Bu bir uyarıdır, net karar değildir. Yönetici değerlendirmesi gereklidir.</small>
                     </div>
                 </div>
@@ -1291,129 +1489,379 @@ window.raporIndir = function() {
 async function dolulukTahminiYukle(periyot) {
     try {
         const res = await fetch(`/api/doluluk-tahmini?periyot=${periyot}`);
-        if(!res.ok) return;
+        if(!res.ok) throw new Error('API hatası');
         const data = await res.json();
         
-        const tbody = document.getElementById('dolulukTahminiTablosu');
-        tbody.innerHTML = '';
+        const container = document.getElementById('dolulukTahminiListesi');
+        if (!container) return;
+
+        const ctx = document.getElementById('dolulukTahminiGrafigi');
+        if (!ctx) return;
+
+        if (kararDestekCharts.dolulukTahmini) kararDestekCharts.dolulukTahmini.destroy();
+
+        const labels = data.tahminler.map(t => t.ay);
+        // GÜNCELLEME: API yanıtı esnek değilse hata vermemesi için kontrol eklendi.
+        const ortalamaData = data.tahminler.map(t => t.tahmini_doluluk_araligi?.ortalama || t.tahmini_doluluk || 0);
         
-        // DSS Prensibi: Tahminler aralık (min-max) ve belirsizlik seviyesi ile sunulur
-        data.tahminler.forEach(t => {
-            // Aralık formatı kontrolü (yeni format)
-            const dolulukAralik = t.tahmini_doluluk_araligi || { min: t.tahmini_doluluk, max: t.tahmini_doluluk, ortalama: t.tahmini_doluluk };
-            const ortalamaDoluluk = dolulukAralik.ortalama || dolulukAralik.min;
-            const belirsizlikSeviyesi = t.belirsizlik_seviyesi || 'orta';
-            const belirsizlikRenk = belirsizlikSeviyesi === 'yüksek' ? 'danger' : (belirsizlikSeviyesi === 'orta' ? 'warning' : 'success');
-            
-            const dolulukRenk = ortalamaDoluluk >= 80 ? 'success' : (ortalamaDoluluk >= 70 ? 'info' : (ortalamaDoluluk >= 60 ? 'warning' : 'danger'));
-            tbody.innerHTML += `
-                <tr>
-                    <td class="fw-bold">${t.ay}</td>
-                    <td>
-                        <span class="badge bg-${dolulukRenk}">${dolulukAralik.min}% - ${dolulukAralik.max}%</span>
-                        <small class="text-muted d-block mt-1">Ortalama: ${dolulukAralik.ortalama}%</small>
-                        <span class="badge bg-${belirsizlikRenk} mt-1">Belirsizlik: ${belirsizlikSeviyesi}</span>
-                    </td>
-                    <td class="small">${t.analiz_yorumu || t.yorum || ''}</td>
-                </tr>
-            `;
+        const backgroundColors = ortalamaData.map(oran => {
+            if(oran >= 80) return 'rgba(16, 185, 129, 0.7)'; // green
+            if(oran >= 60) return 'rgba(59, 130, 246, 0.7)'; // blue
+            return 'rgba(239, 68, 68, 0.7)'; // red
         });
+
+        kararDestekCharts.dolulukTahmini = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ortalama Doluluk (%)',
+                    data: ortalamaData,
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#3b82f6',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const index = context.dataIndex;
+                                const item = data.tahminler[index];
+                                const aralik = item.tahmini_doluluk_araligi;
+                                let text = `Ortalama: ${context.parsed.y.toFixed(1)}%`;
+                                if(aralik && aralik.min !== undefined) {
+                                    text += ` (Aralık: ${aralik.min}% - ${aralik.max}%)`;
+                                }
+                                return text;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: { color: '#94a3b8', callback: v => v + '%' },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
     } catch(e) {
-        console.error('Doluluk tahmini hatası:', e);
+        console.error('Doluluk tahmini grafiği hatası:', e);
     }
 }
+
+// Rakip Fiyat Analizi (API'den gerçek veri)
+const SERP_API_KEY = '2cd20c4121d7a2e3bda15daad41effac28b97da917b013db355fb8779979c865';
+
+async function rakipFiyatAnaliziYukle() {
+    try {
+        // API anahtarını backend'e iletiyoruz. Backend bu anahtarı kullanarak SerpApi'den veri çekmelidir.
+        const res = await fetch(`/api/rakip-analizi?api_key=${SERP_API_KEY}`);
+        if(!res.ok) throw new Error('API hatası');
+        let data = await res.json();
+        
+        // Eğer backend SerpApi ham verisini (properties dizisi) dönerse, formatı grafiğe uygun hale getir
+        if (data.properties && Array.isArray(data.properties)) {
+            data = data.properties.map(otel => {
+                // Fiyat ayrıştırma (Örn: "2.450 TL" -> 2450)
+                let hamFiyat = otel.rate_per_night ? (otel.rate_per_night.lowest || "0") : "0";
+                // Sadece rakamları al
+                let fiyat = parseFloat(hamFiyat.replace(/[^0-9]/g, ''));
+                
+                // Bizim otel tespiti (Örnek: Adında 'Grand' veya 'Bizim' geçen)
+                const bizimOtel = otel.name.toLowerCase().includes('grand') || otel.name.toLowerCase().includes('bizim');
+                
+                return {
+                    otel_adi: otel.name,
+                    fiyat: fiyat,
+                    puan: otel.overall_rating || 0,
+                    bizim_otel: bizimOtel
+                };
+            }).slice(0, 8); // En alakalı 8 oteli al
+        }
+        
+        // Doluluk tahmini grafiği alanını kullanıyoruz (Eski grafik yerine)
+        const ctx = document.getElementById('dolulukTahminiGrafigi');
+        if (!ctx) return;
+
+        if (kararDestekCharts.dolulukTahmini) kararDestekCharts.dolulukTahmini.destroy();
+
+        const labels = data.map(d => d.otel_adi);
+        const prices = data.map(d => parseFloat(d.fiyat));
+        const ratings = data.map(d => d.puan || 0);
+        const minPrice = Math.min(...prices);
+        const maxPrice = Math.max(...prices);
+        
+        const colors = data.map(d => {
+            const p = parseFloat(d.fiyat);
+            if (d.bizim_otel) return '#3b82f6'; // Bizim otel (Mavi)
+            if (p === minPrice) return '#10b981'; // En ucuz (Yeşil)
+            if (p === maxPrice) return '#ef4444'; // En pahalı (Kırmızı)
+            return '#64748b'; // Diğerleri (Gri)
+        });
+        
+        const bizimOtelVerisi = data.find(d => d.bizim_otel);
+        const bizimFiyat = bizimOtelVerisi ? parseFloat(bizimOtelVerisi.fiyat) : 0;
+
+        kararDestekCharts.dolulukTahmini = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Ortalama Gecelik Fiyat (TL)',
+                        data: prices,
+                        backgroundColor: colors,
+                        borderRadius: 6,
+                        barThickness: 40,
+                        order: 2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Otel Puanı',
+                        data: ratings,
+                        type: 'line',
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b',
+                        borderWidth: 2,
+                        pointRadius: 4,
+                        order: 1,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: true, labels: { color: '#94a3b8' } },
+                    tooltip: {
+                        callbacks: { 
+                            label: (c) => {
+                                if (c.dataset.type === 'line') return `Puan: ${c.raw}/5.0`;
+                                const val = parseFloat(c.raw);
+                                let text = `${val} TL`;
+                                if(bizimFiyat > 0) {
+                                    const fark = val - bizimFiyat;
+                                    if (Math.abs(fark) < 0.1) text += ' (Bizim Otel)';
+                                    else text += ` (${fark > 0 ? '+' : ''}${fark} TL)`;
+                                }
+                                return text;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true, 
+                        position: 'left',
+                        ticks: { color: '#94a3b8' }, 
+                        grid: { color: 'rgba(255,255,255,0.05)' } 
+                    },
+                    y1: {
+                        beginAtZero: true,
+                        max: 5,
+                        position: 'right',
+                        ticks: { color: '#f59e0b' },
+                        grid: { display: false }
+                    },
+                    x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+                }
+            }
+        });
+    } catch(e) { console.error('Rakip analiz hatası:', e); }
+}
+
+// Fiyat Stratejisi Periyot Değiştirme
+window.fiyatStratejisiDegistir = function(periyot, btn) {
+    if (btn) {
+        const group = btn.parentElement;
+        group.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    fiyatStratejisiYukle(periyot);
+};
 
 // Fiyat Stratejisi
 async function fiyatStratejisiYukle(periyot) {
     try {
         const res = await fetch(`/api/fiyat-stratejisi?periyot=${periyot}`);
-        if(!res.ok) return;
+        if(!res.ok) throw new Error('API hatası');
         const data = await res.json();
         
-        const tbody = document.getElementById('fiyatStratejisiTablosu');
-        tbody.innerHTML = '';
-        
-        // DSS Prensibi: Alternatifler ve etki analizi sunar
+        const container = document.getElementById('fiyatStratejisiListesi');
+        if (!container) return;
+
+        const ctx = document.getElementById('fiyatStratejisiGrafigi');
+        if (!ctx) return;
+
+        if (kararDestekCharts.fiyatStratejisi) kararDestekCharts.fiyatStratejisi.destroy();
+
         const analizler = data.analizler || data.oneriler || [];
-        analizler.forEach(o => {
-            // Alternatifler varsa göster
-            if(o.alternatifler && o.alternatifler.length > 0) {
-                o.alternatifler.forEach((alt, idx) => {
-                    const degisimRenk = alt.fiyat_degisimi && alt.fiyat_degisimi.includes('+') ? 'success' : (alt.fiyat_degisimi && alt.fiyat_degisimi.includes('-') ? 'danger' : 'secondary');
-                    const etkiler = Object.entries(alt.olası_etkiler || {}).map(([k, v]) => `${k}: ${v}`).join('; ');
-                    tbody.innerHTML += `
-                        <tr>
-                            <td class="fw-bold">${o.ay}${idx > 0 ? ` (Alt. ${idx + 1})` : ''}</td>
-                            <td><span class="badge bg-${degisimRenk}">${alt.fiyat_degisimi || 'N/A'}</span></td>
-                            <td>${o.fiyat_araligi ? `${formatPara(o.fiyat_araligi.min)} - ${formatPara(o.fiyat_araligi.max)}` : formatPara(o.mevcut_fiyat || 0)}</td>
-                            <td class="small">${etkiler}</td>
-                        </tr>
-                    `;
-                });
-                                } else {
-                // Eski format desteği (geriye uyumluluk)
-                const degisimRenk = o.onerilen_fiyat_degisimi > 0 ? 'success' : (o.onerilen_fiyat_degisimi < 0 ? 'danger' : 'secondary');
-                const degisimIsaret = o.onerilen_fiyat_degisimi > 0 ? '+' : '';
-                tbody.innerHTML += `
-                    <tr>
-                        <td class="fw-bold">${o.ay}</td>
-                        <td><span class="badge bg-${degisimRenk}">${degisimIsaret}${o.onerilen_fiyat_degisimi || 0}%</span></td>
-                        <td>${formatPara(o.onerilen_fiyat || o.mevcut_fiyat || 0)}</td>
-                        <td class="small">${o.beklenen_etki || o.etki_analizi?.olası_gelir_etkisi || 'Değerlendirilebilir'}</td>
-                    </tr>
-                `;
+        const labels = analizler.map(o => o.ay);
+        const fiyatData = analizler.map(o => {
+            // Yeni formatı önceliklendir
+            const alternatif = (o.alternatifler && o.alternatifler.length > 0) ? o.alternatifler[0] : o;
+            if (alternatif.onerilen_fiyat) return alternatif.onerilen_fiyat;
+            if (alternatif.fiyat_araligi) return (alternatif.fiyat_araligi.min + alternatif.fiyat_araligi.max) / 2;
+            // Geriye uyumluluk için eski formatı destekle
+            return alternatif.onerilen_fiyat || alternatif.mevcut_fiyat;
+        });
+
+        kararDestekCharts.fiyatStratejisi = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Önerilen Fiyat (₺)',
+                    data: fiyatData,
+                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                    borderColor: '#f59e0b',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#f59e0b',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Fiyat: ${formatPara(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#94a3b8', callback: v => formatPara(v) },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
+                }
             }
         });
+
     } catch(e) {
-        console.error('Fiyat stratejisi hatası:', e);
+        console.error('Fiyat stratejisi grafiği hatası:', e);
     }
 }
+
+// Gelir ve Kâr Tahmini Periyot Değiştirme
+window.gelirKarTahminiDegistir = function(periyot, btn) {
+    if (btn) {
+        const group = btn.parentElement;
+        group.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    gelirKarTahminiYukle(periyot);
+};
 
 // Gelir ve Kâr Tahmini
 async function gelirKarTahminiYukle(periyot) {
     try {
         const res = await fetch(`/api/gelir-kar-tahmini?periyot=${periyot}`);
-        if(!res.ok) return;
+        if(!res.ok) throw new Error('API hatası');
         const data = await res.json();
         
-        const tbody = document.getElementById('gelirKarTahminiTablosu');
-        tbody.innerHTML = '';
-        
-        // DSS Prensibi: Tahminler aralık (min-max) ve belirsizlik seviyesi ile sunulur
-        data.tahminler.forEach(t => {
-            // Aralık formatı kontrolü (yeni format)
-            const gelirAralik = t.tahmini_gelir_araligi || { min: t.tahmini_gelir, max: t.tahmini_gelir, ortalama: t.tahmini_gelir };
-            const karAralik = t.tahmini_kar_araligi || { min: t.tahmini_kar, max: t.tahmini_kar, ortalama: t.tahmini_kar };
-            const karMarjiAralik = t.kar_marji_araligi || { min: t.kar_marji, max: t.kar_marji, ortalama: t.kar_marji };
-            const belirsizlikSeviyesi = t.belirsizlik_seviyesi || 'orta';
-            const belirsizlikRenk = belirsizlikSeviyesi === 'yüksek' ? 'danger' : (belirsizlikSeviyesi === 'orta' ? 'warning' : 'success');
-            
-            const degerlendirmeRenk = (t.analiz_degerlendirmesi || t.yonetsel_degerlendirme) === 'Mükemmel' ? 'success' : 
-                                     ((t.analiz_degerlendirmesi || t.yonetsel_degerlendirme) === 'İyi' ? 'info' : 
-                                     ((t.analiz_degerlendirmesi || t.yonetsel_degerlendirme) === 'Orta' ? 'warning' : 'danger'));
-            tbody.innerHTML += `
-                <tr>
-                    <td class="fw-bold">${t.donem}</td>
-                    <td>
-                        ${formatPara(gelirAralik.min)} - ${formatPara(gelirAralik.max)}
-                        <small class="text-muted d-block">Ort: ${formatPara(gelirAralik.ortalama)}</small>
-                    </td>
-                    <td class="text-success fw-bold">
-                        ${formatPara(karAralik.min)} - ${formatPara(karAralik.max)}
-                        <small class="text-muted d-block">Ort: ${formatPara(karAralik.ortalama)}</small>
-                    </td>
-                    <td>
-                        <span class="badge bg-${degerlendirmeRenk}">${karMarjiAralik.min}% - ${karMarjiAralik.max}%</span>
-                        <small class="text-muted d-block">Ort: ${karMarjiAralik.ortalama}%</small>
-                        <span class="badge bg-${belirsizlikRenk} mt-1">Belirsizlik: ${belirsizlikSeviyesi}</span>
-                    </td>
-                    <td><span class="badge bg-${degerlendirmeRenk}">${t.yonetsel_degerlendirme}</span></td>
-                    <td class="small">${t.yonetici_yorumu}</td>
-                </tr>
-            `;
+        const container = document.getElementById('gelirKarTahminiListesi');
+        if (!container) return;
+
+        const ctx = document.getElementById('gelirKarTahminiGrafigi');
+        if (!ctx) return;
+
+        if (kararDestekCharts.gelirKarTahmini) kararDestekCharts.gelirKarTahmini.destroy();
+
+        const labels = data.tahminler.map(t => t.donem);
+        // GÜNCELLEME: API yanıtı esnek değilse hata vermemesi için kontrol eklendi.
+        const gelirData = data.tahminler.map(t => t.tahmini_gelir_araligi?.ortalama || t.tahmini_gelir || 0);
+        const karData = data.tahminler.map(t => t.tahmini_kar_araligi?.ortalama || t.tahmini_kar || 0);
+
+        kararDestekCharts.gelirKarTahmini = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Tahmini Gelir (₺)',
+                        data: gelirData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4
+                    },
+                    {
+                        label: 'Tahmini Kâr (₺)',
+                        data: karData,
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderColor: '#10b981',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: '#fff' } },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `${context.dataset.label}: ${formatPara(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#94a3b8', callback: v => formatPara(v) },
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { display: false }
+                    }
+                }
+            }
         });
+
     } catch(e) {
-        console.error('Gelir kâr tahmini hatası:', e);
+        console.error('Gelir kâr tahmini grafiği hatası:', e);
     }
 }
 
@@ -1788,18 +2236,49 @@ window.senaryoRaporuIndir = function(senaryoId) {
 
 // Simülasyon sonrası senaryo karşılaştırma tablosunu güncelle
 window.fiyatSimulasyonuYap = async function() { 
-    let val = document.getElementById('fiyatDegisimi').value; 
+    const slider = document.getElementById('fiyatDegisimiSlider');
+    if (!slider) {
+        console.error('Fiyat değişimi slider bulunamadı!');
+        return;
+    }
+    let val = slider.value;
+    
+    // Pazarlama Bütçesi
+    const pSlider = document.getElementById('pazarlamaButcesiSlider');
+    const pazarlamaButcesi = pSlider ? parseFloat(pSlider.value) : 0;
+
+    // Personel Sayısı
+    const perSlider = document.getElementById('personelSayisiSlider');
+    const personelSayisi = perSlider ? parseInt(perSlider.value) : 0;
+
     const kampanyaTuru = 'yok'; // Pazarlama seçimi kaldırıldı
     if (val === "") val = 0; 
     
-    document.getElementById('aiOzetKutusu').innerHTML = '<div class="text-white text-center small mt-2"><i class="fas fa-circle-notch fa-spin"></i> Hesaplıyor...</div>'; 
+    const aiOzetKutusu = document.getElementById('aiOzetKutusu');
+    if (aiOzetKutusu) {
+        aiOzetKutusu.innerHTML = '<div class="text-white text-center small mt-2"><i class="fas fa-circle-notch fa-spin"></i> Hesaplıyor...</div>'; 
+    }
+
+    const simuleEtButonu = document.querySelector('button[onclick="window.fiyatSimulasyonuYap()"]');
+    if(simuleEtButonu) {
+        simuleEtButonu.disabled = true;
+    }
     
     const res = await fetch('/api/simulasyon', { 
         method:'POST', 
         headers:{'Content-Type':'application/json'}, 
-        body:JSON.stringify({fiyatDegisimi:parseFloat(val), kampanyaTuru: kampanyaTuru}) 
+        body:JSON.stringify({
+            fiyatDegisimi: parseFloat(val), 
+            pazarlamaButcesi: pazarlamaButcesi,
+            personelSayisi: personelSayisi,
+            kampanyaTuru: kampanyaTuru
+        }) 
     }); 
     const data = await res.json(); 
+
+    if(simuleEtButonu) {
+        simuleEtButonu.disabled = false;
+    }
     
     // Senaryo karşılaştırma tablosunu göster ve doldur
     if(data.senaryoKarsilastirma) {
@@ -1831,8 +2310,9 @@ window.fiyatSimulasyonuYap = async function() {
     fEl.className = `fw-bold m-0 display-6 ${data.realist.fark>=0?'text-success':'text-danger'}`; 
     document.getElementById('kpiKarCard').className = `card p-3 text-center border-bottom border-4 ${data.realist.fark>=0?'border-success':'border-danger'}`; 
     document.getElementById('kpiMarj').innerText = `%${data.realist.marj ? data.realist.marj.toFixed(1) : 0}`;
-    
-    document.getElementById('aiOzetKutusu').innerHTML = `<div class="alert bg-dark border ${data.realist.fark>=0?'border-success':'border-danger'} text-white p-3 shadow mt-3"><div class="mb-1 fw-bold text-${data.realist.fark>=0?'success':'danger'}">${data.ai_mesaj}</div></div>`; 
+    if (aiOzetKutusu) {
+        aiOzetKutusu.innerHTML = `<div class="alert bg-dark border ${data.realist.fark>=0?'border-success':'border-danger'} text-white p-3 shadow mt-3"><div class="mb-1 fw-bold text-${data.realist.fark>=0?'success':'danger'}">${data.ai_mesaj}</div></div>`; 
+    }
     document.getElementById('chartRow').style.display = 'flex';
     
     // Grafikler (mevcut kod)
@@ -1975,6 +2455,69 @@ window.fiyatSimulasyonuYap = async function() {
     
     senaryoListesiniGetir();
 };
+
+// Strateji Simülatörü - Taslak Senaryo İşlemleri
+window.simulasyonTaslakKaydet = function() {
+    const fSlider = document.getElementById('fiyatDegisimiSlider');
+    const pSlider = document.getElementById('pazarlamaButcesiSlider');
+    const perSlider = document.getElementById('personelSayisiSlider');
+    
+    if (!fSlider) { alert('Simülasyon araçları bulunamadı.'); return; }
+    
+    const taslak = {
+        fiyatDegisimi: fSlider.value,
+        pazarlamaButcesi: pSlider ? pSlider.value : 0,
+        personelSayisi: perSlider ? perSlider.value : 0,
+        tarih: new Date().toLocaleString('tr-TR')
+    };
+    
+    localStorage.setItem('simulasyonTaslak', JSON.stringify(taslak));
+    alert(`Taslak senaryo kaydedildi. (${taslak.tarih})`);
+    
+    const btnYukle = document.getElementById('btnTaslakYukle');
+    if(btnYukle) btnYukle.style.display = 'inline-block';
+};
+
+window.simulasyonTaslakYukle = function() {
+    const taslakStr = localStorage.getItem('simulasyonTaslak');
+    if (!taslakStr) { alert('Kaydedilmiş taslak bulunamadı.'); return; }
+    
+    try {
+        const taslak = JSON.parse(taslakStr);
+        const fSlider = document.getElementById('fiyatDegisimiSlider');
+        const pSlider = document.getElementById('pazarlamaButcesiSlider');
+        const perSlider = document.getElementById('personelSayisiSlider');
+        
+        if (fSlider) {
+            fSlider.value = taslak.fiyatDegisimi;
+            fSlider.dispatchEvent(new Event('input'));
+        }
+        if (pSlider) {
+            pSlider.value = taslak.pazarlamaButcesi;
+            pSlider.dispatchEvent(new Event('input'));
+        }
+        if (perSlider && taslak.personelSayisi !== undefined) {
+            perSlider.value = taslak.personelSayisi;
+            perSlider.dispatchEvent(new Event('input'));
+        }
+        alert(`Taslak yüklendi. (Kayıt: ${taslak.tarih})`);
+    } catch(e) { console.error('Taslak yükleme hatası:', e); }
+};
+
+function simulasyonTaslakArayuzuEkle() {
+    const slider = document.getElementById('fiyatDegisimiSlider');
+    if (slider) {
+        let parent = slider.closest('.card-body') || slider.parentElement;
+        if (parent && !document.getElementById('taslakKontrolDiv')) {
+            const div = document.createElement('div');
+            div.id = 'taslakKontrolDiv';
+            div.className = 'd-flex justify-content-end gap-2 mt-3 pt-3 border-top';
+            const taslakVar = localStorage.getItem('simulasyonTaslak') !== null;
+            div.innerHTML = `<button onclick="window.simulasyonTaslakKaydet()" class="btn btn-sm btn-outline-secondary"><i class="fas fa-save me-1"></i>Taslak Kaydet</button><button id="btnTaslakYukle" onclick="window.simulasyonTaslakYukle()" class="btn btn-sm btn-outline-primary" style="display: ${taslakVar ? 'inline-block' : 'none'}"><i class="fas fa-upload me-1"></i>Taslak Yükle</button>`;
+            parent.appendChild(div);
+        }
+    }
+}
 
 // ========== PREMIUM ANALYTICS FUNCTIONS ==========
 let odaGrafikleri = [], detayChart = null, rakipChartAnalytics = null, pastaChart = null;
