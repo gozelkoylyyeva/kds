@@ -29,6 +29,106 @@ exports.hesaplaKPI = async function() {
 };
 
 /**
+ * KPI detay grafiği için veri çeker
+ * @param {string} kpiTipi - 'doluluk', 'gelir', 'karMarji', 'iptalOrani'
+ * @param {number} periyot - Ay sayısı (6 veya 12)
+ */
+exports.getKpiDetay = async (req, res) => {
+    try {
+        const { kpiTipi, periyot = 6 } = req.query;
+        
+        if (!kpiTipi || !['doluluk', 'gelir', 'karMarji', 'iptalOrani'].includes(kpiTipi)) {
+            return res.status(400).json({ error: 'Geçersiz KPI tipi' });
+        }
+        
+        const periyotInt = parseInt(periyot) || 6;
+        const aylar = [];
+        const veriler = [];
+        
+        // Son N ayın verilerini çek
+        for (let i = periyotInt - 1; i >= 0; i--) {
+            const tarih = new Date();
+            tarih.setMonth(tarih.getMonth() - i);
+            const ay = tarih.toISOString().slice(0, 7);
+            aylar.push(tarih.toLocaleDateString('tr-TR', { month: 'short', year: 'numeric' }));
+            
+            // Veritabanından o ayın verisini çek
+            const veri = await getAyVerisi(ay, kpiTipi);
+            veriler.push(veri);
+        }
+        
+        res.json({
+            kpiTipi: kpiTipi,
+            periyot: periyotInt,
+            labels: aylar,
+            data: veriler,
+            birim: kpiTipi === 'gelir' ? 'TL' : (kpiTipi === 'doluluk' || kpiTipi === 'karMarji' || kpiTipi === 'iptalOrani' ? '%' : '')
+        });
+    } catch (error) {
+        console.error('KPI detay hatası:', error);
+        res.status(500).json({ error: 'KPI detay verisi alınamadı' });
+    }
+};
+
+/**
+ * Belirli bir ay için KPI verisi çeker
+ */
+function getAyVerisi(ay, kpiTipi) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT 
+                DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                COUNT(*) as rezervasyon_sayisi,
+                SUM(fiyat * konaklama_suresi) as toplam_gelir,
+                SUM(iptal_durumu) as iptal_sayisi,
+                COUNT(*) as toplam_rezervasyon,
+                (SUM(fiyat * konaklama_suresi) * 0.4) as tahmini_kar,
+                (SUM(fiyat * konaklama_suresi) * 0.6) as tahmini_maliyet
+            FROM rezervasyonlar
+            WHERE DATE_FORMAT(giris_tarihi, '%Y-%m') = ?
+            GROUP BY DATE_FORMAT(giris_tarihi, '%Y-%m')
+        `;
+        
+        db.query(sql, [ay], (err, results) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            
+            if (!results || results.length === 0) {
+                resolve(0);
+                return;
+            }
+            
+            const row = results[0];
+            let deger = 0;
+            
+            switch (kpiTipi) {
+                case 'doluluk':
+                    // Doluluk hesaplama (basitleştirilmiş)
+                    deger = Math.min(100, (row.rezervasyon_sayisi / 100) * 100);
+                    break;
+                case 'gelir':
+                    deger = parseFloat(row.toplam_gelir) || 0;
+                    break;
+                case 'karMarji':
+                    const gelir = parseFloat(row.toplam_gelir) || 0;
+                    const kar = parseFloat(row.tahmini_kar) || 0;
+                    deger = gelir > 0 ? (kar / gelir) * 100 : 0;
+                    break;
+                case 'iptalOrani':
+                    const toplam = parseFloat(row.toplam_rezervasyon) || 1;
+                    const iptal = parseFloat(row.iptal_sayisi) || 0;
+                    deger = (iptal / toplam) * 100;
+                    break;
+            }
+            
+            resolve(deger);
+        });
+    });
+}
+
+/**
  * KPI'ları hesaplar
  */
 async function hesaplaKPI() {

@@ -115,7 +115,7 @@ exports.getAylikRapor = async (req, res) => {
             otomatik_karar_onerileri: enOnemliOneriler,
             risk_degerlendirmesi: riskDegerlendirmesi,
             rapor_ozeti: raporOzeti,
-            hazirlayan: 'Otel KDS Sistemi'
+            hazirlayan: 'HotelVision - Karar Destek Platformu'
         });
     } catch (error) {
         console.error('Rapor oluşturma hatası:', error);

@@ -1,8 +1,0 @@
-body.bg-body { background: #0b1526; color: #e5e7eb; }
-.card { background: #101c2f; border: 1px solid rgba(255,255,255,0.05); color: #e5e7eb; }
-.kpi-card { min-height: 120px; }
-.kpi-card h3 { color: #fff; }
-.badge { font-weight: 600; }
-.text-muted { color: #9ca3af !important; }
-.fw-bold { font-weight: 700 !important; }
-

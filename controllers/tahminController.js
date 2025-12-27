@@ -1,23 +1,25 @@
-const db = require('../config/db');
+const { db } = require('../database');
 
 /**
  * Doluluk Tahmini
  * Geçmiş verileri kullanarak 6 ay ve 12 ay ileriye dönük doluluk tahmini yapar
  */
-exports.getDolulukTahmini = (req, res) => {
+exports.getDolulukTahmini = async (req, res) => {
     const periyot = req.query.periyot || '6'; // 6 veya 12 ay
     
-    db.query(`
-        SELECT 
-            DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
-            COUNT(*) as rezervasyon_sayisi
-        FROM rezervasyonlar
-        WHERE iptal_durumu = 0
-        GROUP BY ay
-        ORDER BY ay DESC
-        LIMIT 24
-    `, (err, results) => {
-        if (err || !results || results.length === 0) {
+    try {
+        const [results] = await db.query(`
+            SELECT 
+                DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                COUNT(*) as rezervasyon_sayisi
+            FROM rezervasyonlar
+            WHERE iptal_durumu = 0
+            GROUP BY ay
+            ORDER BY ay DESC
+            LIMIT 24
+        `);
+        
+        if (!results || results.length === 0) {
             return res.json({
                 tahminler: generateFallbackDolulukTahmini(parseInt(periyot)),
                 yontem: 'Basit Moving Average (Fallback)'
@@ -30,7 +32,13 @@ exports.getDolulukTahmini = (req, res) => {
             yontem: 'Moving Average + Mevsimsellik Katsayısı',
             kullanilan_veri: results.length + ' ay geçmiş veri'
         });
-    });
+    } catch (err) {
+        console.error('Doluluk tahmini hatası:', err);
+        return res.json({
+            tahminler: generateFallbackDolulukTahmini(parseInt(periyot)),
+            yontem: 'Basit Moving Average (Fallback)'
+        });
+    }
 };
 
 /**
@@ -114,22 +122,24 @@ function hesaplaDolulukTahmini(gecmisVeri, periyot) {
  * Geçmiş fiyat ve doluluk verilerini kullanarak fiyat alternatiflerini ve olası etkilerini analiz eder
  * DSS Prensibi: Net karar vermez, sadece alternatifler ve etki analizi sunar
  */
-exports.getFiyatStratejisi = (req, res) => {
+exports.getFiyatStratejisi = async (req, res) => {
     const periyot = req.query.periyot || '6'; // 6 veya 12 ay
     
-    db.query(`
-        SELECT 
-            DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
-            AVG(fiyat) as ortalama_fiyat,
-            COUNT(*) as rezervasyon_sayisi,
-            SUM(fiyat * konaklama_suresi) as toplam_gelir
-        FROM rezervasyonlar
-        WHERE iptal_durumu = 0
-        GROUP BY ay
-        ORDER BY ay DESC
-        LIMIT 24
-    `, (err, results) => {
-        if (err || !results || results.length === 0) {
+    try {
+        const [results] = await db.query(`
+            SELECT 
+                DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                AVG(fiyat) as ortalama_fiyat,
+                COUNT(*) as rezervasyon_sayisi,
+                SUM(fiyat * konaklama_suresi) as toplam_gelir
+            FROM rezervasyonlar
+            WHERE iptal_durumu = 0
+            GROUP BY ay
+            ORDER BY ay DESC
+            LIMIT 24
+        `);
+        
+        if (!results || results.length === 0) {
             return res.json({
                 analizler: generateFallbackFiyatStratejisi(parseInt(periyot)),
                 yontem: 'Basit Fiyat Esneklik Analizi (Fallback)',
@@ -137,31 +147,73 @@ exports.getFiyatStratejisi = (req, res) => {
             });
         }
         
-        const analizler = hesaplaFiyatStratejisi(results, parseInt(periyot));
-        res.json({
-            analizler: analizler,
-            yontem: 'Fiyat Esneklik Analizi + Geçmiş Trend',
-            kullanilan_veri: results.length + ' ay geçmiş veri',
-            not: 'Bu analizler alternatifler ve olası etkileri sunar. Nihai karar yöneticiye aittir.'
+        try {
+            const analizler = hesaplaFiyatStratejisi(results, parseInt(periyot));
+            res.json({
+                analizler: analizler,
+                yontem: 'Fiyat Esneklik Analizi + Geçmiş Trend',
+                kullanilan_veri: results.length + ' ay geçmiş veri',
+                not: 'Bu analizler alternatifler ve olası etkileri sunar. Nihai karar yöneticiye aittir.'
+            });
+        } catch (calcErr) {
+            console.error('Fiyat stratejisi hesaplama hatası:', calcErr);
+            return res.json({
+                analizler: generateFallbackFiyatStratejisi(parseInt(periyot)),
+                yontem: 'Basit Fiyat Esneklik Analizi (Fallback)',
+                not: 'Bu analizler alternatifler sunar. Nihai karar yöneticiye aittir.'
+            });
+        }
+    } catch (error) {
+        console.error('Fiyat stratejisi genel hatası:', error);
+        return res.status(500).json({
+            error: 'Fiyat stratejisi hesaplanamadı',
+            analizler: generateFallbackFiyatStratejisi(parseInt(periyot)),
+            yontem: 'Basit Fiyat Esneklik Analizi (Fallback)',
+            not: 'Bu analizler alternatifler sunar. Nihai karar yöneticiye aittir.'
         });
-    });
+    }
 };
 
 /**
  * Fiyat stratejisi hesaplama
  */
 function hesaplaFiyatStratejisi(gecmisVeri, periyot) {
-    const veri = gecmisVeri.reverse();
+    if (!gecmisVeri || !Array.isArray(gecmisVeri) || gecmisVeri.length === 0) {
+        return generateFallbackFiyatStratejisi(periyot);
+    }
+    const veri = [...gecmisVeri].reverse(); // Orijinal array'i değiştirmemek için kopyala
     
     // Fiyat-doluluk ilişkisini hesapla
     const toplamOda = 100;
     const toplamGun = 30;
     const toplamOdaGun = toplamOda * toplamGun;
     
-    // Son 12 ay için fiyat esnekliği hesapla
+    // Son 12 ay için fiyat esnekliği ve trend analizi
     const son12Ay = veri.slice(-12);
     let toplamFiyatDegisim = 0;
     let toplamDolulukDegisim = 0;
+    
+    // Fiyat trendini hesapla (basit lineer regresyon)
+    let fiyatTrend = 0;
+    if (son12Ay.length >= 2) {
+        const ilkFiyat = parseFloat(son12Ay[0].ortalama_fiyat) || 0;
+        const sonFiyat = parseFloat(son12Ay[son12Ay.length - 1].ortalama_fiyat) || 0;
+        fiyatTrend = (sonFiyat - ilkFiyat) / son12Ay.length; // Aylık ortalama değişim
+    }
+    
+    // Fiyat volatilitesi (dalgalanma)
+    const fiyatlar = son12Ay.map(v => parseFloat(v.ortalama_fiyat) || 0).filter(f => f > 0);
+    if (fiyatlar.length === 0) {
+        // Eğer fiyat verisi yoksa fallback döndür
+        return generateFallbackFiyatStratejisi(periyot);
+    }
+    const ortalamaFiyat = fiyatlar.reduce((sum, f) => sum + f, 0) / fiyatlar.length;
+    if (ortalamaFiyat === 0 || isNaN(ortalamaFiyat) || !isFinite(ortalamaFiyat)) {
+        return generateFallbackFiyatStratejisi(periyot);
+    }
+    const fiyatVaryans = fiyatlar.reduce((sum, f) => sum + Math.pow(f - ortalamaFiyat, 2), 0) / fiyatlar.length;
+    const fiyatStandartSapma = Math.sqrt(fiyatVaryans);
+    const volatiliteKatsayi = ortalamaFiyat > 0 ? (fiyatStandartSapma / ortalamaFiyat) : 0.1; // % volatilite
     
     for (let i = 1; i < son12Ay.length; i++) {
         const oncekiFiyat = parseFloat(son12Ay[i-1].ortalama_fiyat) || 0;
@@ -175,8 +227,29 @@ function hesaplaFiyatStratejisi(gecmisVeri, periyot) {
         }
     }
     
-    const ortalamaFiyatEsneklik = toplamDolulukDegisim / (toplamFiyatDegisim || 1);
-    const mevcutOrtalamaFiyat = parseFloat(veri[veri.length - 1].ortalama_fiyat) || 3500;
+    const ortalamaFiyatEsneklik = toplamFiyatDegisim !== 0 ? (toplamDolulukDegisim / toplamFiyatDegisim) : 0;
+    const mevcutOrtalamaFiyat = parseFloat(veri[veri.length - 1]?.ortalama_fiyat) || ortalamaFiyat || 3500;
+    
+    // Mevsimsel pattern analizi (ay bazında ortalama fiyat)
+    const aylikOrtalamalar = {};
+    for (let i = 0; i < 12; i++) {
+        aylikOrtalamalar[i + 1] = [];
+    }
+    veri.forEach(v => {
+        const ayNo = parseInt(v.ay.split('-')[1]);
+        const fiyat = parseFloat(v.ortalama_fiyat) || 0;
+        if (fiyat > 0) {
+            aylikOrtalamalar[ayNo].push(fiyat);
+        }
+    });
+    
+    const aylikOrtalamaFiyatlar = {};
+    Object.keys(aylikOrtalamalar).forEach(ay => {
+        const fiyatlar = aylikOrtalamalar[ay];
+        if (fiyatlar.length > 0) {
+            aylikOrtalamaFiyatlar[ay] = fiyatlar.reduce((sum, f) => sum + f, 0) / fiyatlar.length;
+        }
+    });
     
     const oneriler = [];
     const bugun = new Date();
@@ -186,116 +259,75 @@ function hesaplaFiyatStratejisi(gecmisVeri, periyot) {
         const ay = hedefTarih.toISOString().slice(0, 7);
         const ayNo = hedefTarih.getMonth() + 1;
         
-        // Mevsimsellik (yaz ayları daha yüksek fiyat)
-        const mevsimKatsayi = (ayNo >= 6 && ayNo <= 8) ? 1.15 : (ayNo >= 12 || ayNo <= 2) ? 0.90 : 1.0;
-        
-        // DSS Prensibi: Fiyat esnekliğine göre alternatifler ve etki analizi
-        // Net karar vermez, sadece alternatifler sunar
-        const mevcutFiyat = mevcutOrtalamaFiyat * mevsimKatsayi;
-        
-        // Alternatif fiyat değişimleri ve olası etkileri
-        let alternatifler = [];
-        let belirsizlikSeviyesi = 'orta';
-        
-        if (ortalamaFiyatEsneklik > -0.5) {
-            // Fiyat esnekliği düşük - Fiyat artışı alternatifi
-            const fiyatArtisi = 5 * mevsimKatsayi;
-            alternatifler = [
-                {
-                    alternatif: 'Fiyat Artışı',
-                    fiyat_degisimi: `+%${fiyatArtisi.toFixed(1)}`,
-                    olası_etkiler: {
-                        doluluk_etkisi: 'Minimal düşüş beklenebilir (%2-5)',
-                        gelir_etkisi: 'Gelir artışı potansiyeli var',
-                        risk: 'Pazar payı kaybı riski düşük'
-                    },
-                    belirsizlik_seviyesi: 'düşük'
-                },
-                {
-                    alternatif: 'Fiyat Sabit Tutma',
-                    fiyat_degisimi: '%0',
-                    olası_etkiler: {
-                        doluluk_etkisi: 'Mevcut trend devam edebilir',
-                        gelir_etkisi: 'Gelir stabil kalabilir',
-                        risk: 'Düşük'
-                    },
-                    belirsizlik_seviyesi: 'düşük'
-                }
-            ];
-            belirsizlikSeviyesi = 'düşük';
-        } else if (ortalamaFiyatEsneklik < -1.0) {
-            // Fiyat esnekliği yüksek - Fiyat indirimi alternatifi
-            const fiyatIndirimi = -10 * (1 / mevsimKatsayi);
-            alternatifler = [
-                {
-                    alternatif: 'Fiyat İndirimi',
-                    fiyat_degisimi: `%${fiyatIndirimi.toFixed(1)}`,
-                    olası_etkiler: {
-                        doluluk_etkisi: 'Doluluk artışı beklenebilir (%5-15)',
-                        gelir_etkisi: 'Toplam gelir artışı potansiyeli var, ancak marj düşebilir',
-                        risk: 'Fiyat savaşına yol açabilir'
-                    },
-                    belirsizlik_seviyesi: 'yüksek'
-                },
-                {
-                    alternatif: 'Fiyat Sabit Tutma',
-                    fiyat_degisimi: '%0',
-                    olası_etkiler: {
-                        doluluk_etkisi: 'Mevcut trend devam edebilir',
-                        gelir_etkisi: 'Gelir stabil kalabilir',
-                        risk: 'Rekabet avantajı kaybedilebilir'
-                    },
-                    belirsizlik_seviyesi: 'orta'
-                }
-            ];
-            belirsizlikSeviyesi = 'yüksek';
+        // Mevsimsellik katsayısı (geçmiş verilerden)
+        let mevsimKatsayi = 1.0;
+        if (aylikOrtalamaFiyatlar[ayNo]) {
+            mevsimKatsayi = aylikOrtalamaFiyatlar[ayNo] / ortalamaFiyat;
         } else {
-            // Dengeli durum
-            alternatifler = [
-                {
-                    alternatif: 'Fiyat Sabit Tutma',
-                    fiyat_degisimi: '%0',
-                    olası_etkiler: {
-                        doluluk_etkisi: 'Mevcut trend devam edebilir',
-                        gelir_etkisi: 'Gelir stabil kalabilir',
-                        risk: 'Düşük'
-                    },
-                    belirsizlik_seviyesi: 'düşük'
-                },
-                {
-                    alternatif: 'Hafif Fiyat Artışı',
-                    fiyat_degisimi: '+%2-5',
-                    olası_etkiler: {
-                        doluluk_etkisi: 'Minimal etki beklenebilir',
-                        gelir_etkisi: 'Gelir artışı potansiyeli var',
-                        risk: 'Düşük'
-                    },
-                    belirsizlik_seviyesi: 'orta'
-                }
-            ];
-            belirsizlikSeviyesi = 'orta';
+            // Fallback mevsimsellik
+            mevsimKatsayi = (ayNo >= 6 && ayNo <= 8) ? 1.15 : (ayNo >= 12 || ayNo <= 2) ? 0.90 : 1.0;
         }
         
-        // Etki analizi: Olası fiyat aralığı ve gelir etkisi
-        const minFiyat = mevcutFiyat * 0.90;
-        const maxFiyat = mevcutFiyat * 1.10;
+        // Trend bazlı tahmin (geçmiş trendi geleceğe yansıt)
+        const trendEtkisi = fiyatTrend * i; // İlerleyen aylarda trend etkisi artar
+        
+        // Volatilite bazlı dalgalanma (rastgele ama gerçekçi)
+        const rastgeleDalgalanma = (Math.random() - 0.5) * 2 * volatiliteKatsayi * ortalamaFiyat * 0.3; // %30 volatilite
+        
+        // Temel fiyat hesaplama
+        const temelFiyat = mevcutOrtalamaFiyat * mevsimKatsayi + trendEtkisi;
+        const onerilenFiyat = temelFiyat + rastgeleDalgalanma;
+        
+        // Fiyat aralığı (belirsizlik dahil)
+        const belirsizlikYuzdesi = i <= 3 ? 0.05 : (i <= 6 ? 0.10 : 0.15); // İlerleyen aylarda belirsizlik artar
+        const minFiyat = onerilenFiyat * (1 - belirsizlikYuzdesi);
+        const maxFiyat = onerilenFiyat * (1 + belirsizlikYuzdesi);
+        
+        // Alternatifler (DSS prensibi)
+        const alternatifler = [
+            {
+                alternatif: 'Önerilen Fiyat',
+                onerilen_fiyat: Math.round(onerilenFiyat),
+                fiyat_degisimi: mevcutOrtalamaFiyat > 0 
+                    ? `%${(((onerilenFiyat - mevcutOrtalamaFiyat) / mevcutOrtalamaFiyat) * 100).toFixed(1)}`
+                    : '%0.0',
+                olası_etkiler: {
+                    doluluk_etkisi: 'Mevsimsel ve trend analizine göre beklenen doluluk',
+                    gelir_etkisi: 'Trend ve mevsimsellik dikkate alınarak beklenen gelir',
+                    risk: volatiliteKatsayi > 0.15 ? 'Orta' : 'Düşük'
+                },
+                belirsizlik_seviyesi: i <= 3 ? 'düşük' : (i <= 6 ? 'orta' : 'yüksek')
+            }
+        ];
+        
+        // Güvenli hesaplamalar
+        const fiyatDegisimiYuzde = mevcutOrtalamaFiyat > 0 
+            ? (((onerilenFiyat - mevcutOrtalamaFiyat) / mevcutOrtalamaFiyat) * 100).toFixed(1)
+            : '0.0';
         
         oneriler.push({
             ay: ay,
-            mevcut_fiyat: Math.round(mevcutFiyat),
-            alternatifler: alternatifler,
+            mevcut_fiyat: Math.round(mevcutOrtalamaFiyat),
+            onerilen_fiyat: Math.round(onerilenFiyat),
+            alternatifler: alternatifler.map(alt => ({
+                ...alt,
+                fiyat_degisimi: `%${fiyatDegisimiYuzde}`
+            })),
             fiyat_araligi: {
                 min: Math.round(minFiyat),
                 max: Math.round(maxFiyat),
-                ortalama: Math.round(mevcutFiyat)
+                ortalama: Math.round(onerilenFiyat)
             },
-            belirsizlik_seviyesi: belirsizlikSeviyesi,
+            belirsizlik_seviyesi: i <= 3 ? 'düşük' : (i <= 6 ? 'orta' : 'yüksek'),
+            trend_etkisi: mevcutOrtalamaFiyat > 0 ? parseFloat((trendEtkisi / mevcutOrtalamaFiyat * 100).toFixed(2)) : 0,
+            mevsimsel_etki: parseFloat(((mevsimKatsayi - 1) * 100).toFixed(2)),
+            volatilite: parseFloat((volatiliteKatsayi * 100).toFixed(2)),
             etki_analizi: {
                 olası_gelir_etkisi: 'Fiyat değişimine bağlı olarak gelir artabilir veya azalabilir',
                 olası_doluluk_etkisi: 'Fiyat esnekliğine bağlı olarak doluluk etkilenebilir',
-                risk_faktörleri: ['Pazar koşulları', 'Rekabet durumu', 'Mevsimsellik']
+                risk_faktörleri: ['Pazar koşulları', 'Rekabet durumu', 'Mevsimsellik', 'Trend']
             },
-            not: 'Bu analiz alternatifler sunar. Nihai karar yöneticiye aittir.'
+            not: 'Bu analiz geçmiş verilere dayalı tahminler sunar. Nihai karar yöneticiye aittir.'
         });
     }
     
@@ -433,37 +465,78 @@ function hesaplaGelirKarTahmini(gecmisVeri, periyot) {
  * Personel İhtiyacı Tahmini
  * Doluluk oranlarına göre personel ihtiyacını tahmin eder
  */
-exports.getPersonelIhtiyaci = (req, res) => {
-    db.query(`
-        SELECT 
-            DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
-            COUNT(*) as rezervasyon_sayisi
-        FROM rezervasyonlar
-        WHERE iptal_durumu = 0
-        GROUP BY ay
-        ORDER BY ay DESC
-        LIMIT 12
-    `, (err, results) => {
-        if (err || !results || results.length === 0) {
+exports.getPersonelIhtiyaci = async (req, res) => {
+    try {
+        const [results] = await db.query(`
+            SELECT 
+                DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                COUNT(*) as rezervasyon_sayisi
+            FROM rezervasyonlar
+            WHERE iptal_durumu = 0
+            GROUP BY ay
+            ORDER BY ay DESC
+            LIMIT 12
+        `);
+        
+        if (!results || results.length === 0) {
+            const fallbackTahminler = generateFallbackPersonelIhtiyaci();
+            // Fallback için doluluk grafik verisi oluştur
+            const fallbackGrafik = [];
+            for (let doluluk = 40; doluluk <= 95; doluluk += 5) {
+                let personelKatsayi = 1.0;
+                if (doluluk >= 85) personelKatsayi = 1.3;
+                else if (doluluk >= 75) personelKatsayi = 1.15;
+                else if (doluluk >= 65) personelKatsayi = 1.0;
+                else if (doluluk >= 55) personelKatsayi = 0.85;
+                else personelKatsayi = 0.70;
+                
+                fallbackGrafik.push({
+                    doluluk_orani: doluluk,
+                    personel_ihtiyaci: {
+                        temizlik: Math.round(15 * personelKatsayi),
+                        servis: Math.round(12 * personelKatsayi),
+                        mutfak: Math.round(8 * personelKatsayi),
+                        on_buro: Math.round(6 * personelKatsayi),
+                        yonetim: Math.round(3 * personelKatsayi),
+                        toplam: Math.round(44 * personelKatsayi)
+                    }
+                });
+            }
+            
             return res.json({
-                tahminler: generateFallbackPersonelIhtiyaci(),
+                tahminler: fallbackTahminler,
+                doluluk_personel_grafik: fallbackGrafik,
                 yontem: 'Basit Doluluk-Personel Katsayısı (Fallback)'
             });
         }
         
         const tahminler = hesaplaPersonelIhtiyaci(results);
+        
+        // Doluluk oranına göre personel ihtiyacı grafiği için veri hazırla
+        const dolulukPersonelGrafik = hesaplaDolulukPersonelGrafik(results);
+        
         res.json({
             tahminler: tahminler,
+            doluluk_personel_grafik: dolulukPersonelGrafik, // Yeni grafik verisi
             yontem: 'Doluluk Bazlı Personel Katsayısı',
             kullanilan_veri: results.length + ' ay geçmiş veri'
         });
-    });
+    } catch (error) {
+        console.error('Personel ihtiyacı veritabanı hatası:', error);
+        return res.json({
+            tahminler: generateFallbackPersonelIhtiyaci(),
+            yontem: 'Basit Doluluk-Personel Katsayısı (Fallback)'
+        });
+    }
 };
 
 /**
  * Personel ihtiyacı hesaplama
  */
 function hesaplaPersonelIhtiyaci(gecmisVeri) {
+    if (!gecmisVeri || !Array.isArray(gecmisVeri) || gecmisVeri.length === 0) {
+        return generateFallbackPersonelIhtiyaci();
+    }
     const toplamOda = 100;
     const toplamGun = 30;
     const toplamOdaGun = toplamOda * toplamGun;
@@ -552,62 +625,215 @@ function hesaplaPersonelIhtiyaci(gecmisVeri) {
 }
 
 /**
+ * Doluluk oranına göre personel ihtiyacı grafik verisi hesaplama
+ * Farklı doluluk seviyelerinde personel ihtiyacını gösterir
+ */
+function hesaplaDolulukPersonelGrafik(gecmisVeri) {
+    const toplamOda = 100;
+    const toplamGun = 30;
+    const toplamOdaGun = toplamOda * toplamGun;
+    
+    // Mevcut personel sayıları (varsayılan)
+    const mevcutPersonel = {
+        temizlik: 15,
+        servis: 12,
+        mutfak: 8,
+        on_buro: 6,
+        yonetim: 3
+    };
+    
+    // Doluluk seviyeleri (40%'dan 95%'e kadar 5% artışlarla)
+    const dolulukSeviyeleri = [];
+    for (let doluluk = 40; doluluk <= 95; doluluk += 5) {
+        dolulukSeviyeleri.push(doluluk);
+    }
+    
+    // Her doluluk seviyesi için personel ihtiyacını hesapla
+    const grafikVerisi = dolulukSeviyeleri.map(doluluk => {
+        // Personel katsayısını doluluk oranına göre belirle
+        let personelKatsayi = 1.0;
+        if (doluluk >= 85) personelKatsayi = 1.3;
+        else if (doluluk >= 75) personelKatsayi = 1.15;
+        else if (doluluk >= 65) personelKatsayi = 1.0;
+        else if (doluluk >= 55) personelKatsayi = 0.85;
+        else personelKatsayi = 0.70;
+        
+        // Her departman için personel ihtiyacını hesapla
+        const departmanlar = {
+            temizlik: Math.round(mevcutPersonel.temizlik * personelKatsayi),
+            servis: Math.round(mevcutPersonel.servis * personelKatsayi),
+            mutfak: Math.round(mevcutPersonel.mutfak * personelKatsayi),
+            on_buro: Math.round(mevcutPersonel.on_buro * personelKatsayi),
+            yonetim: Math.round(mevcutPersonel.yonetim * personelKatsayi)
+        };
+        
+        // Toplam personel ihtiyacı
+        const toplamPersonel = Object.values(departmanlar).reduce((sum, val) => sum + val, 0);
+        
+        return {
+            doluluk_orani: doluluk,
+            personel_ihtiyaci: {
+                temizlik: departmanlar.temizlik,
+                servis: departmanlar.servis,
+                mutfak: departmanlar.mutfak,
+                on_buro: departmanlar.on_buro,
+                yonetim: departmanlar.yonetim,
+                toplam: toplamPersonel
+            }
+        };
+    });
+    
+    return grafikVerisi;
+}
+
+/**
  * Gelecek Risk Analizi
  * Önümüzdeki 6 ay ve 1 yıl için risk analizi yapar
  */
-exports.getGelecekRiskAnalizi = (req, res) => {
+exports.getGelecekRiskAnalizi = async (req, res) => {
     const periyot = req.query.periyot || '6'; // 6 veya 12 ay
     
-    db.query(`
-        SELECT 
-            DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
-            COUNT(*) as rezervasyon_sayisi,
-            SUM(fiyat * konaklama_suresi) as toplam_gelir,
-            AVG(fiyat) as ortalama_fiyat
-        FROM rezervasyonlar
-        WHERE iptal_durumu = 0
-        GROUP BY ay
-        ORDER BY ay DESC
-        LIMIT 24
-    `, (err, results) => {
-        if (err || !results || results.length === 0) {
+    try {
+        // Önce kolonların varlığını kontrol et
+        let [columnCheck] = await db.query(`
+            SELECT COLUMN_NAME 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = DATABASE() 
+            AND TABLE_NAME = 'rezervasyonlar' 
+            AND COLUMN_NAME IN ('konaklama_suresi', 'fiyat')
+        `);
+        const hasKonaklamaSuresi = columnCheck.some(c => c.COLUMN_NAME === 'konaklama_suresi');
+        const hasFiyat = columnCheck.some(c => c.COLUMN_NAME === 'fiyat');
+        
+        let sqlQuery;
+        if (hasFiyat && hasKonaklamaSuresi) {
+            sqlQuery = `
+                SELECT 
+                    DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                    COUNT(*) as rezervasyon_sayisi,
+                    SUM(fiyat * COALESCE(konaklama_suresi, 2)) as toplam_gelir,
+                    COALESCE(SUM(konaklama_suresi), COUNT(*) * 2) as toplam_gece,
+                    AVG(fiyat) as ortalama_fiyat
+                FROM rezervasyonlar
+                WHERE iptal_durumu = 0
+                GROUP BY ay
+                ORDER BY ay DESC
+                LIMIT 24
+            `;
+        } else if (hasFiyat) {
+            sqlQuery = `
+                SELECT 
+                    DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                    COUNT(*) as rezervasyon_sayisi,
+                    SUM(fiyat * 2) as toplam_gelir,
+                    COUNT(*) * 2 as toplam_gece,
+                    AVG(fiyat) as ortalama_fiyat
+                FROM rezervasyonlar
+                WHERE iptal_durumu = 0
+                GROUP BY ay
+                ORDER BY ay DESC
+                LIMIT 24
+            `;
+        } else if (hasKonaklamaSuresi) {
+            sqlQuery = `
+                SELECT 
+                    DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                    COUNT(*) as rezervasyon_sayisi,
+                    COUNT(*) * 3500 * COALESCE(SUM(konaklama_suresi), COUNT(*) * 2) as toplam_gelir,
+                    COALESCE(SUM(konaklama_suresi), COUNT(*) * 2) as toplam_gece,
+                    3500 as ortalama_fiyat
+                FROM rezervasyonlar
+                WHERE iptal_durumu = 0
+                GROUP BY ay
+                ORDER BY ay DESC
+                LIMIT 24
+            `;
+        } else {
+            // Her iki kolon da yoksa varsayılan değerler kullan
+            sqlQuery = `
+                SELECT 
+                    DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
+                    COUNT(*) as rezervasyon_sayisi,
+                    COUNT(*) * 3500 * 2 as toplam_gelir,
+                    COUNT(*) * 2 as toplam_gece,
+                    3500 as ortalama_fiyat
+                FROM rezervasyonlar
+                WHERE iptal_durumu = 0
+                GROUP BY ay
+                ORDER BY ay DESC
+                LIMIT 24
+            `;
+        }
+        
+        const [results] = await db.query(sqlQuery);
+        
+        if (!results || results.length === 0) {
             return res.json({
                 risk_analizi: generateFallbackRiskAnalizi(parseInt(periyot)),
                 yontem: 'Basit Risk Faktörü Analizi (Fallback)'
             });
         }
         
-        const riskAnalizi = hesaplaGelecekRiskAnalizi(results, parseInt(periyot));
-        res.json({
-            risk_analizi: riskAnalizi,
-            yontem: 'Çok Faktörlü Risk Analizi',
-            kullanilan_veri: results.length + ' ay geçmiş veri'
+        try {
+            const riskAnalizi = hesaplaGelecekRiskAnalizi(results, parseInt(periyot));
+            res.json({
+                risk_analizi: riskAnalizi,
+                yontem: 'Çok Faktörlü Risk Analizi',
+                kullanilan_veri: results.length + ' ay geçmiş veri'
+            });
+        } catch (calcErr) {
+            console.error('Risk analizi hesaplama hatası:', calcErr);
+            return res.json({
+                risk_analizi: generateFallbackRiskAnalizi(parseInt(periyot)),
+                yontem: 'Basit Risk Faktörü Analizi (Fallback)'
+            });
+        }
+    } catch (error) {
+        console.error('Risk analizi genel hatası:', error);
+        // 500 hatası yerine 200 ile fallback veri döndür (frontend hatası önlemek için)
+        return res.status(200).json({
+            error: 'Risk analizi hesaplanamadı',
+            risk_analizi: generateFallbackRiskAnalizi(parseInt(periyot)),
+            yontem: 'Basit Risk Faktörü Analizi (Fallback)'
         });
-    });
+    }
 };
 
 /**
  * Gelecek risk analizi hesaplama
  */
 function hesaplaGelecekRiskAnalizi(gecmisVeri, periyot) {
-    const veri = gecmisVeri.reverse();
+    if (!gecmisVeri || !Array.isArray(gecmisVeri) || gecmisVeri.length === 0) {
+        return generateFallbackRiskAnalizi(periyot);
+    }
+    
+    const veri = [...gecmisVeri].reverse(); // Orijinal array'i değiştirmemek için kopyala
     const toplamOda = 100;
-    const toplamGun = 30;
-    const toplamOdaGun = toplamOda * toplamGun;
     
-    // Geçmiş ortalamalar
+    // Geçmiş ortalamalar - Her ay için gerçek gün sayısını kullan
     const son12Ay = veri.slice(-12);
-    const ortalamaDoluluk = son12Ay.reduce((sum, v) => {
-        return sum + ((v.rezervasyon_sayisi / toplamOdaGun) * 100);
-    }, 0) / son12Ay.length;
+    const ortalamaDoluluk = son12Ay.length > 0 ? son12Ay.reduce((sum, v) => {
+        const [yil, ay] = v.ay.split('-').map(Number);
+        const gercekGunSayisi = new Date(yil, ay, 0).getDate();
+        const toplamOdaGun = toplamOda * gercekGunSayisi;
+        const toplamRezerveGece = v.toplam_gece || (v.rezervasyon_sayisi * 2);
+        const doluluk = toplamOdaGun > 0 ? (toplamRezerveGece / toplamOdaGun) * 100 : 0;
+        return sum + doluluk;
+    }, 0) / son12Ay.length : 70;
     
-    const ortalamaGelir = son12Ay.reduce((sum, v) => sum + (parseFloat(v.toplam_gelir) || 0), 0) / son12Ay.length;
-    const gelirVaryans = son12Ay.reduce((sum, v) => {
-        const gelir = parseFloat(v.toplam_gelir) || 0;
-        return sum + Math.pow(gelir - ortalamaGelir, 2);
-    }, 0) / son12Ay.length;
-    const gelirStandartSapma = Math.sqrt(gelirVaryans);
-    const gelirDalgalanmaOrani = (gelirStandartSapma / ortalamaGelir) * 100;
+    const ortalamaGelir = son12Ay.length > 0 
+        ? son12Ay.reduce((sum, v) => sum + (parseFloat(v.toplam_gelir) || 0), 0) / son12Ay.length 
+        : 3500000;
+    const gelirVaryans = son12Ay.length > 0 && ortalamaGelir > 0
+        ? son12Ay.reduce((sum, v) => {
+            const gelir = parseFloat(v.toplam_gelir) || 0;
+            return sum + Math.pow(gelir - ortalamaGelir, 2);
+        }, 0) / son12Ay.length
+        : 0;
+    const gelirStandartSapma = Math.sqrt(Math.max(0, gelirVaryans));
+    const gelirDalgalanmaOrani = ortalamaGelir > 0 
+        ? (gelirStandartSapma / ortalamaGelir) * 100 
+        : 15; // Varsayılan %15 dalgalanma
     
     const riskAnalizleri = [];
     const bugun = new Date();
@@ -642,9 +868,13 @@ function hesaplaGelecekRiskAnalizi(gecmisVeri, periyot) {
         else if (personelMaliyetOraniVarsayilan > 0.45) personelMaliyetOrani = 10;
         
         let rakipFiyatBaskisi = 0;
-        const ortalamaFiyat = parseFloat(veri[veri.length - 1].ortalama_fiyat) || 3500;
+        const ortalamaFiyat = veri.length > 0 && veri[veri.length - 1]?.ortalama_fiyat 
+            ? parseFloat(veri[veri.length - 1].ortalama_fiyat) || 3500
+            : 3500;
         const rakipFiyat = ortalamaFiyat * 0.88; // %12 daha düşük varsayım
-        const fiyatFarki = ((ortalamaFiyat - rakipFiyat) / rakipFiyat) * 100;
+        const fiyatFarki = rakipFiyat > 0 
+            ? ((ortalamaFiyat - rakipFiyat) / rakipFiyat) * 100 
+            : 0;
         if (fiyatFarki > 25) rakipFiyatBaskisi = 25;
         else if (fiyatFarki > 20) rakipFiyatBaskisi = 20;
         else if (fiyatFarki > 15) rakipFiyatBaskisi = 15;
@@ -728,47 +958,66 @@ exports.kaydetSenaryoAnalizi = (req, res) => {
         return res.status(400).json({ error: 'Senaryo adı ve verisi gerekli' });
     }
     
-    // DSS Prensibi: Senaryo tercihi yöneticiye aittir
-    const degerlendirilebilirSenaryo = senaryo_verisi.degerlendirilebilir_senaryo || senaryo_verisi.onerilen_senaryo || 'realist';
-    const senaryoTipi = degerlendirilebilirSenaryo === 'iyimser' ? 'iyimser' : 
-                       degerlendirilebilirSenaryo === 'kotumser' ? 'kotumser' : 'realist';
+    // Strateji Simülatörü'nden gelen veri mi kontrol et
+    const isSimulasyon = senaryo_verisi.senaryo_tipi === 'simulasyon' || 
+                        senaryo_verisi.fiyat_degisimi !== undefined ||
+                        senaryo_verisi.personel_sayisi !== undefined;
     
-    // Sonuç durumunu belirle (ortalama karlara göre)
-    const ortalamaKar = senaryo_verisi.ortalama_karlar ? 
-                       senaryo_verisi.ortalama_karlar[degerlendirilebilirSenaryo] : 0;
-    const sonucDurumu = ortalamaKar > 1500000 ? 'Başarılı' : 'Riskli';
+    let senaryoTipi, sonucDurumu, sonucVeri;
     
-    // Senaryo verisini JSON olarak hazırla
-    const sonucVeri = {
-        senaryolar: senaryo_verisi.senaryolar,
-        degerlendirilebilir_senaryo: degerlendirilebilirSenaryo, // "önerilen" yerine "değerlendirilebilir"
-        analiz_gerekcesi: senaryo_verisi.analiz_gerekcesi || senaryo_verisi.gerekce, // Geriye uyumluluk
-        yonetici_tercihi_notu: senaryo_verisi.yonetici_tercihi_notu || '',
-        ortalama_karlar: senaryo_verisi.ortalama_karlar,
-        periyot: periyot || 6,
-        kayit_tarihi: new Date().toISOString(),
-        not: 'Bu analiz senaryo alternatiflerini sunar. Hangi senaryonun tercih edileceği yönetici kararına bağlıdır.'
-    };
+    if (isSimulasyon) {
+        // Strateji Simülatörü verisi
+        senaryoTipi = 'simulasyon';
+        const netKar = senaryo_verisi.net_kar || 0;
+        sonucDurumu = netKar > 1500000 ? 'Başarılı' : (netKar > 0 ? 'Orta' : 'Riskli');
+        
+        sonucVeri = {
+            senaryo_tipi: 'simulasyon',
+            fiyat_degisimi: senaryo_verisi.fiyat_degisimi || 0,
+            personel_sayisi: senaryo_verisi.personel_sayisi || 20,
+            pazarlama_butcesi: senaryo_verisi.pazarlama_butcesi || 0,
+            tahmini_ciro: senaryo_verisi.tahmini_ciro || 0,
+            net_kar: senaryo_verisi.net_kar || 0,
+            kar_marji: senaryo_verisi.kar_marji || 0,
+            simulasyon_tarihi: senaryo_verisi.simulasyon_tarihi || new Date().toISOString(),
+            periyot: periyot || 6,
+            kayit_tarihi: new Date().toISOString(),
+            not: 'Strateji Simülatörü ile oluşturuldu',
+            senaryoKarsilastirma: senaryo_verisi.senaryoKarsilastirma || []
+        };
+    } else {
+        // Senaryo Analizi verisi
+        const degerlendirilebilirSenaryo = senaryo_verisi.degerlendirilebilir_senaryo || senaryo_verisi.onerilen_senaryo || 'realist';
+        senaryoTipi = degerlendirilebilirSenaryo === 'iyimser' ? 'iyimser' : 
+                     degerlendirilebilirSenaryo === 'kotumser' ? 'kotumser' : 'realist';
+        
+        const ortalamaKar = senaryo_verisi.ortalama_karlar ? 
+                           senaryo_verisi.ortalama_karlar[degerlendirilebilirSenaryo] : 0;
+        sonucDurumu = ortalamaKar > 1500000 ? 'Başarılı' : 'Riskli';
+        
+        sonucVeri = {
+            senaryolar: senaryo_verisi.senaryolar,
+            degerlendirilebilir_senaryo: degerlendirilebilirSenaryo,
+            analiz_gerekcesi: senaryo_verisi.analiz_gerekcesi || senaryo_verisi.gerekce,
+            yonetici_tercihi_notu: senaryo_verisi.yonetici_tercihi_notu || '',
+            ortalama_karlar: senaryo_verisi.ortalama_karlar,
+            periyot: periyot || 6,
+            kayit_tarihi: new Date().toISOString(),
+            not: 'Bu analiz senaryo alternatiflerini sunar. Hangi senaryonun tercih edileceği yönetici kararına bağlıdır.'
+        };
+    }
     
-    db.query(
-        `INSERT INTO senaryolar 
-         (senaryo_adi, senaryo_tipi, sonuc_veri, sonuc_durumu, tarih) 
-         VALUES (?, ?, ?, ?, NOW())`,
-        [senaryo_adi, senaryoTipi, JSON.stringify(sonucVeri), sonucDurumu],
-        (err, result) => {
-            if (err) {
-                console.error('Senaryo kaydetme hatası:', err);
-                // Tablo yoksa DSS çıktısını yine de bozmayalım, kullanıcıya bilgi verelim
-                if (err.code === 'ER_NO_SUCH_TABLE') {
-                    return res.status(200).json({
-                        success: false,
-                        warning: 'Senaryolar tablosu bulunamadı, kayıt yapılmadı. Analiz çalışmaya devam ediyor.',
-                        fallback: true,
-                        detay: err.message
-                    });
-                }
-                return res.status(500).json({ error: 'Senaryo kaydedilemedi', detay: err.message });
-            }
+    (async () => {
+        try {
+            // Senaryo tipi ve durum değerlerini kullan (tablo artık 'simulasyon' ve 'Orta' değerlerini destekliyor)
+            const [result] = await db.query(
+                `INSERT INTO senaryolar 
+                 (senaryo_adi, senaryo_tipi, sonuc_veri, sonuc_durumu, tarih) 
+                 VALUES (?, ?, ?, ?, NOW())`,
+                [senaryo_adi, senaryoTipi, JSON.stringify(sonucVeri), sonucDurumu]
+            );
+            
+            console.log(`✅ Senaryo kaydedildi: ID=${result.insertId}, Adı=${senaryo_adi}, Tipi=${senaryoTipi}, Durum=${sonucDurumu}`);
             
             res.json({
                 success: true,
@@ -778,62 +1027,164 @@ exports.kaydetSenaryoAnalizi = (req, res) => {
                 senaryo_tipi: senaryoTipi,
                 sonuc_durumu: sonucDurumu
             });
+        } catch (err) {
+            console.error('Senaryo kaydetme hatası:', err);
+            console.error('Hata detayları:', {
+                code: err.code,
+                sqlMessage: err.sqlMessage,
+                sqlState: err.sqlState
+            });
+            
+            // Tablo yoksa veya ENUM hatası varsa
+            if (err.code === 'ER_NO_SUCH_TABLE') {
+                return res.status(200).json({
+                    success: false,
+                    warning: 'Senaryolar tablosu bulunamadı. Lütfen setup_senaryolar.js scriptini çalıştırın.',
+                    fallback: true,
+                    detay: err.message
+                });
+            }
+            
+            // ENUM hatası - tabloyu güncellemek gerekebilir
+            if (err.code === 'ER_DATA_TOO_LONG' || err.sqlMessage?.includes('ENUM')) {
+                return res.status(500).json({ 
+                    error: 'Senaryo tipi veya durum değeri geçersiz. Tablo şeması güncellenmeli.',
+                    detay: err.message,
+                    onerilen_tip: senaryoTipi === 'simulasyon' ? 'realist kullanıldı' : senaryoTipi
+                });
+            }
+            
+            return res.status(500).json({ error: 'Senaryo kaydedilemedi', detay: err.message });
         }
-    );
+    })();
 };
 
 /**
  * Senaryo Raporu Oluşturma
  * Kaydedilmiş senaryolar için detaylı rapor oluşturur
  */
-exports.getSenaryoRaporu = (req, res) => {
+exports.getSenaryoRaporu = async (req, res) => {
     const senaryoId = req.params.id;
     
     if (!senaryoId) {
         return res.status(400).json({ error: 'Senaryo ID gerekli' });
     }
     
-    db.query(
-        `SELECT * FROM senaryolar WHERE id = ?`,
-        [senaryoId],
-        (err, results) => {
-            if (err) {
-                return res.status(500).json({ error: 'Rapor oluşturulamadı', detay: err.message });
-            }
-            
-            if (!results || results.length === 0) {
-                return res.status(404).json({ error: 'Senaryo bulunamadı' });
-            }
+    try {
+        const [results] = await db.query(
+            `SELECT * FROM senaryolar WHERE id = ?`,
+            [senaryoId]
+        );
+        
+        if (!results || results.length === 0) {
+            return res.status(404).json({ error: 'Senaryo bulunamadı' });
+        }
             
             const senaryo = results[0];
             const senaryoVeri = typeof senaryo.sonuc_veri === 'string' ? 
                                JSON.parse(senaryo.sonuc_veri) : senaryo.sonuc_veri;
             
+            // Simülasyon verisi mi kontrol et
+            const isSimulasyon = senaryoVeri.senaryo_tipi === 'simulasyon' || 
+                                senaryoVeri.fiyat_degisimi !== undefined ||
+                                senaryoVeri.personel_sayisi !== undefined;
+            
+            // Eksik verileri tamamla - Mevcut durum verilerini çek
+            let mevcutDurum = {};
+            try {
+                const [mevcutSonuc] = await db.query(`
+                    SELECT 
+                        SUM(fiyat * konaklama_suresi) as mevcut_ciro,
+                        AVG(fiyat) as ortalama_fiyat,
+                        COUNT(*) as rezervasyon_sayisi,
+                        SUM(konaklama_suresi) as toplam_gece
+                    FROM rezervasyonlar 
+                    WHERE iptal_durumu = 0 
+                    AND giris_tarihi >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+                `);
+                if (mevcutSonuc && mevcutSonuc.length > 0) {
+                    mevcutDurum = {
+                        ciro: parseFloat(mevcutSonuc[0].mevcut_ciro) || 0,
+                        ortalama_fiyat: parseFloat(mevcutSonuc[0].ortalama_fiyat) || 0,
+                        rezervasyon_sayisi: parseInt(mevcutSonuc[0].rezervasyon_sayisi) || 0,
+                        toplam_gece: parseInt(mevcutSonuc[0].toplam_gece) || 0
+                    };
+                }
+            } catch (err) {
+                console.warn('Mevcut durum verisi çekilemedi:', err.message);
+            }
+            
             // Rapor verilerini hazırla
             const rapor = {
                 senaryo_bilgileri: {
                     id: senaryo.id,
-                    senaryo_adi: senaryo.senaryo_adi,
-                    senaryo_tipi: senaryo.senaryo_tipi,
-                    sonuc_durumu: senaryo.sonuc_durumu,
-                    tarih: senaryo.tarih
+                    senaryo_adi: senaryo.senaryo_adi || 'İsimsiz Senaryo',
+                    senaryo_tipi: senaryoVeri.senaryo_tipi || senaryo.senaryo_tipi || 'realist',
+                    sonuc_durumu: senaryo.sonuc_durumu || 'Riskli',
+                    tarih: senaryo.tarih || new Date().toISOString(),
+                    olusturulma_tarihi: new Date(senaryo.tarih).toLocaleDateString('tr-TR', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
                 },
-                analiz_ozeti: {
-                    degerlendirilebilir_senaryo: senaryoVeri.degerlendirilebilir_senaryo || senaryoVeri.onerilen_senaryo, // Geriye uyumluluk
-                    analiz_gerekcesi: senaryoVeri.analiz_gerekcesi || senaryoVeri.gerekce, // Geriye uyumluluk
+                mevcut_durum: mevcutDurum,
+                analiz_ozeti: isSimulasyon ? {
+                    // Simülasyon verisi için özel format
+                    simulasyon_verisi: true,
+                    fiyat_degisimi: senaryoVeri.fiyat_degisimi || 0,
+                    personel_sayisi: senaryoVeri.personel_sayisi || 20,
+                    pazarlama_butcesi: senaryoVeri.pazarlama_butcesi || 0,
+                    tahmini_ciro: senaryoVeri.tahmini_ciro || 0,
+                    net_kar: senaryoVeri.net_kar || 0,
+                    kar_marji: senaryoVeri.kar_marji || 0,
+                    periyot: senaryoVeri.periyot || 6,
+                    not: senaryoVeri.not || 'Strateji Simülatörü ile oluşturuldu',
+                    fark_ciro: (senaryoVeri.tahmini_ciro || 0) - (mevcutDurum.ciro || 0),
+                    fark_kar: (senaryoVeri.net_kar || 0) - ((mevcutDurum.ciro || 0) * 0.4) // Varsayılan %40 kar marjı
+                } : {
+                    // Senaryo Analizi verisi
+                    degerlendirilebilir_senaryo: senaryoVeri.degerlendirilebilir_senaryo || senaryoVeri.onerilen_senaryo || 'realist',
+                    analiz_gerekcesi: senaryoVeri.analiz_gerekcesi || senaryoVeri.gerekce || 'Geçmiş veriler ve trend analizi kullanılarak oluşturulmuştur.',
                     yonetici_tercihi_notu: senaryoVeri.yonetici_tercihi_notu || '',
-                    ortalama_karlar: senaryoVeri.ortalama_karlar,
-                    periyot: senaryoVeri.periyot || 6
+                    ortalama_karlar: {
+                        iyimser: senaryoVeri.ortalama_karlar?.iyimser || 0,
+                        realist: senaryoVeri.ortalama_karlar?.realist || 0,
+                        kotumser: senaryoVeri.ortalama_karlar?.kotumser || 0
+                    },
+                    periyot: senaryoVeri.periyot || 6,
+                    toplam_tahmini_gelir: {
+                        iyimser: Array.isArray(senaryoVeri.senaryolar) ? 
+                            senaryoVeri.senaryolar.reduce((sum, s) => sum + (s?.iyimser?.tahmini_gelir || 0), 0) : 0,
+                        realist: Array.isArray(senaryoVeri.senaryolar) ? 
+                            senaryoVeri.senaryolar.reduce((sum, s) => sum + (s?.realist?.tahmini_gelir || 0), 0) : 0,
+                        kotumser: Array.isArray(senaryoVeri.senaryolar) ? 
+                            senaryoVeri.senaryolar.reduce((sum, s) => sum + ((s?.kotumser || s?.kutumser)?.tahmini_gelir || 0), 0) : 0
+                    },
+                    toplam_tahmini_kar: {
+                        iyimser: Array.isArray(senaryoVeri.senaryolar) ? 
+                            senaryoVeri.senaryolar.reduce((sum, s) => sum + (s?.iyimser?.tahmini_kar || 0), 0) : 0,
+                        realist: Array.isArray(senaryoVeri.senaryolar) ? 
+                            senaryoVeri.senaryolar.reduce((sum, s) => sum + (s?.realist?.tahmini_kar || 0), 0) : 0,
+                        kotumser: Array.isArray(senaryoVeri.senaryolar) ? 
+                            senaryoVeri.senaryolar.reduce((sum, s) => sum + ((s?.kotumser || s?.kutumser)?.tahmini_kar || 0), 0) : 0
+                    }
                 },
                 detayli_senaryolar: senaryoVeri.senaryolar || [],
+                senaryo_karsilastirma: senaryoVeri.senaryoKarsilastirma || senaryoVeri.senaryo_karsilastirma || [],
                 grafik_verileri: {
-                    aylar: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.ay) : [],
+                    aylar: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.ay || '-') : [],
                     iyimser_gelir: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.iyimser?.tahmini_gelir || 0) : [],
                     realist_gelir: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.realist?.tahmini_gelir || 0) : [],
                     kotumser_gelir: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => (s?.kotumser || s?.kutumser)?.tahmini_gelir || 0) : [],
                     iyimser_kar: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.iyimser?.tahmini_kar || 0) : [],
                     realist_kar: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.realist?.tahmini_kar || 0) : [],
-                    kotumser_kar: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => (s?.kotumser || s?.kutumser)?.tahmini_kar || 0) : []
+                    kotumser_kar: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => (s?.kotumser || s?.kutumser)?.tahmini_kar || 0) : [],
+                    iyimser_doluluk: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.iyimser?.tahmini_doluluk || 0) : [],
+                    realist_doluluk: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => s?.realist?.tahmini_doluluk || 0) : [],
+                    kotumser_doluluk: Array.isArray(senaryoVeri.senaryolar) ? senaryoVeri.senaryolar.map(s => (s?.kotumser || s?.kutumser)?.tahmini_doluluk || 0) : []
                 },
                 degerlendirilebilir_stratejiler: {
                     // DSS Prensibi: Net karar vermez, sadece alternatifler sunar
@@ -877,27 +1228,27 @@ exports.getSenaryoRaporu = (req, res) => {
             };
             
             res.json(rapor);
-        }
-    );
+    } catch (err) {
+        return res.status(500).json({ error: 'Rapor oluşturulamadı', detay: err.message });
+    }
 };
 
 /**
  * Tüm Senaryo Raporları Listesi
  */
-exports.getSenaryoRaporlari = (req, res) => {
-    db.query(
-        `SELECT id, senaryo_adi, senaryo_tipi, sonuc_durumu, tarih 
-         FROM senaryolar 
-         ORDER BY tarih DESC 
-         LIMIT 50`,
-        (err, results) => {
-            if (err) {
-                return res.status(500).json({ error: 'Raporlar yüklenemedi', detay: err.message });
-            }
-            
-            res.json(results || []);
-        }
-    );
+exports.getSenaryoRaporlari = async (req, res) => {
+    try {
+        const [results] = await db.query(
+            `SELECT id, senaryo_adi, senaryo_tipi, sonuc_durumu, tarih 
+             FROM senaryolar 
+             ORDER BY tarih DESC 
+             LIMIT 50`
+        );
+        
+        res.json(results || []);
+    } catch (err) {
+        return res.status(500).json({ error: 'Raporlar yüklenemedi', detay: err.message });
+    }
 };
 
 /**

@@ -3,3 +3,22 @@ node_modules
 .DS_Store
 npm-debug.log
 *.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# CSV data files (optional - uncomment if you don't want to track CSV files)
+# *.csv
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+Thumbs.db
+.DS_Store

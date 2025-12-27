@@ -2,7 +2,7 @@ const mysql = require('mysql2');
 
 const db = mysql.createConnection({
     host: '127.0.0.1', user: 'root', password: 'root', 
-    database: 'kds_oteldb', port: 8889, multipleStatements: true
+    database: 'otel_kds_db', port: 8889, multipleStatements: true
 });
 
 db.connect(err => { 

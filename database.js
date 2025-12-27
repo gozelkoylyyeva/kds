@@ -3,11 +3,11 @@ require('dotenv').config();
 
 // MySQL Bağlantı Havuzu
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST || '127.0.0.1',
     user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '12345678', // MySQL şifrenizi buraya girin
+    password: process.env.DB_PASSWORD || 'root', // MySQL şifrenizi buraya girin
     database: process.env.DB_NAME || 'otel_kds_db',
-    port: process.env.DB_PORT || 3306,
+    port: process.env.DB_PORT || 8889,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
