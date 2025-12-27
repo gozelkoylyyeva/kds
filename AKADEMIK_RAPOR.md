@@ -392,7 +392,7 @@ Tüm API yanıtları JSON formatındadır ve aşağıdaki yapıyı takip eder:
 
 #### 6.1.1. Server Yapılandırması
 
-Ana sunucu dosyası `server.js`, Express.js framework'ü kullanılarak yapılandırılmıştır:
+Ana sunucu dosyası `app.js`, Express.js framework'ü kullanılarak yapılandırılmıştır:
 
 ```javascript
 const express = require('express');

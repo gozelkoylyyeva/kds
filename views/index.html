@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.1.0/dist/chartjs-plugin-datalabels.min.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/views/style.css">
 </head>
 <body>
 <div class="container-fluid">
@@ -62,9 +62,6 @@
                         </h1>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn btn-outline-primary btn-sm" onclick="exportDashboardToExcel()" title="Excel'e Aktar">
-                            <i class="fas fa-file-excel me-1"></i>Excel
-                        </button>
                         <button class="btn btn-outline-secondary btn-sm" onclick="refreshDashboard()" title="Yenile">
                             <i class="fas fa-sync-alt me-1"></i>Yenile
                         </button>
@@ -144,10 +141,10 @@
                     </div>
                 </div>
                 
-                <!-- Aylık Rezervasyon Trendi - Tam Genişlik -->
+                <!-- Aylık Rezervasyon Trendi ve Rakip Fiyat Analizi - Yan Yana -->
                 <div class="row g-4 mb-4">
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 p-4">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 p-4 h-100">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h5 class="mb-0 fw-bold"><i class="fas fa-chart-area me-2 text-primary"></i>Aylık Rezervasyon Trendi</h5>
                             </div>
@@ -156,12 +153,8 @@
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Rakip Fiyat Analizi - Tam Genişlik -->
-                <div class="row g-4 mb-4">
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 p-4 border-warning border-start border-4">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 p-4 border-warning border-start border-4 h-100">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h5 class="mb-0 fw-bold"><i class="fas fa-balance-scale me-2 text-warning"></i>Rakip Fiyat Analizi</h5>
                                 <button class="btn btn-sm btn-outline-warning" onclick="rakipFiyatAnaliziYukle()">
@@ -179,9 +172,9 @@
                     <!-- Gelecek Tahminleri ve Stratejiler -->
                 <div class="row g-4 mt-4">
                     
-                    <!-- Doluluk Tahmini - Tam Genişlik -->
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 p-4 border-primary border-start border-4">
+                    <!-- Doluluk Tahmini ve Gelir-Kâr Tahmini - Yan Yana -->
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 p-4 border-primary border-start border-4 h-100">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-alt me-2 text-primary"></i>Doluluk Tahmini</h5>
                                 <div class="btn-group btn-group-sm">
@@ -195,9 +188,8 @@
                         </div>
                     </div>
                     
-                    <!-- Gelir ve Kâr Tahmini - Tam Genişlik -->
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 p-4 border-success border-start border-4">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 p-4 border-success border-start border-4 h-100">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h5 class="mb-0 fw-bold"><i class="fas fa-chart-line me-2 text-success"></i>Gelir ve Kâr Tahmini</h5>
                                 <div class="btn-group btn-group-sm">
@@ -211,32 +203,31 @@
                         </div>
                     </div>
                     
-                    <!-- Yıllık Karşılaştırma (2023-2024-2025) - Tam Genişlik -->
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 p-4 border-info border-start border-4">
+                    <!-- Yıllık Karşılaştırma ve Personel İhtiyacı - Yan Yana -->
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 p-4 border-info border-start border-4 h-100">
                             <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-check me-2 text-info"></i>Yıllık Karşılaştırma (2023-2024-2025)</h5>
+                                <h5 class="mb-0 fw-bold"><i class="fas fa-calendar-check me-2 text-info"></i>Yıllık Karşılaştırma</h5>
                                 <button class="btn btn-sm btn-outline-info" onclick="yillikKarsilastirmaYukle()">
                                     <i class="fas fa-sync-alt me-1"></i>Yenile
                                 </button>
                             </div>
                             <div id="yillikKarsilastirmaBilgi" class="mb-3"></div>
-                            <div id="yillikKarsilastirmaTablosu" class="table-responsive mb-4"></div>
-                            <div id="yillikKarsilastirmaGrafigi" style="height:450px; position:relative;">
+                            <div id="yillikKarsilastirmaTablosu" class="table-responsive mb-3" style="max-height: 180px; overflow-y: auto;"></div>
+                            <div id="yillikKarsilastirmaGrafigi" style="height:380px; position:relative;">
                                 <canvas id="yillikKarsilastirmaChart"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Personel İhtiyacı - Tam Genişlik -->
-                    <div class="col-12">
-                        <div class="card shadow-sm border-0 p-4 border-info border-start border-4">
+                    <div class="col-lg-6">
+                        <div class="card shadow-sm border-0 p-4 border-info border-start border-4 h-100">
                             <div class="d-flex justify-content-between align-items-center mb-4">
                                 <h5 class="mb-0 fw-bold"><i class="fas fa-users me-2 text-info"></i>Personel İhtiyacı Tahmini</h5>
                             </div>
                             <div class="row g-4">
-                                <div class="col-lg-5">
-                                    <div id="personelIhtiyaciListesi" class="table-responsive">
+                                <div class="col-12">
+                                    <div id="personelIhtiyaciListesi" class="table-responsive mb-3">
                                         <table class="table table-sm table-hover">
                                             <thead class="table-light">
                                                 <tr>
@@ -252,8 +243,8 @@
                                         </table>
                                     </div>
                                 </div>
-                                <div class="col-lg-7">
-                                    <div style="height:450px; position:relative;">
+                                <div class="col-12">
+                                    <div style="height:400px; position:relative;">
                                         <canvas id="personelIhtiyaciGrafigi"></canvas>
                                     </div>
                                 </div>
@@ -363,9 +354,9 @@
                                 <h4 class="mb-4"><i class="fas fa-chart-line me-2 text-primary"></i>Detaylı Analiz ve Grafikler</h4>
                             </div>
                             
-                            <!-- Gelir Trend Analizi - Tek Başına (Tam Genişlik) -->
-                            <div class="col-12">
-                                <div class="card p-4">
+                            <!-- Gelir Trend Analizi ve Tahmin Doğruluğu - Yan Yana -->
+                            <div class="col-lg-6">
+                                <div class="card p-4 h-100">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
                                             <h5 class="mb-1"><i class="fas fa-chart-line me-2 text-primary"></i>Gelir Trend Analizi</h5>
@@ -377,10 +368,23 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-lg-6">
+                                <div class="card p-4 h-100">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <div>
+                                            <h5 class="mb-1"><i class="fas fa-bullseye me-2 text-info"></i>Tahmin Doğruluğu</h5>
+                                            <small class="text-muted">Gerçek vs tahmin karşılaştırması</small>
+                                        </div>
+                                    </div>
+                                    <div style="height:350px; position:relative;">
+                                        <canvas id="tahminDogruluguGrafigi"></canvas>
+                                    </div>
+                                </div>
+                            </div>
                             
                             <!-- Doluluk Analizi ve Fiyat Analizi - Yan Yana -->
                             <div class="col-lg-6">
-                                <div class="card p-4" style="overflow:visible;">
+                                <div class="card p-4 h-100" style="overflow:visible;">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
                                             <h5 class="mb-1"><i class="fas fa-chart-bar me-2 text-success"></i>Doluluk Analizi</h5>
@@ -398,7 +402,7 @@
                                 </div>
                             </div>
                             <div class="col-lg-6">
-                                <div class="card p-4">
+                                <div class="card p-4 h-100">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <div>
                                             <h5 class="mb-1"><i class="fas fa-balance-scale me-2 text-primary"></i>Fiyat Analizi</h5>
@@ -411,22 +415,6 @@
                                     </div>
                                     <div style="height:450px; position:relative;">
                                         <canvas id="fiyatEsneklikGrafigi"></canvas>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row g-4 mb-4">
-                            <div class="col-lg-12">
-                                <div class="card p-4">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
-                                        <div>
-                                            <h5 class="mb-1"><i class="fas fa-bullseye me-2 text-info"></i>Tahmin Doğruluğu</h5>
-                                            <small class="text-muted">Gerçek vs tahmin karşılaştırması</small>
-                                        </div>
-                                    </div>
-                                    <div style="height:350px; position:relative;">
-                                        <canvas id="tahminDogruluguGrafigi"></canvas>
                                     </div>
                                 </div>
                             </div>

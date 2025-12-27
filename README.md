@@ -445,7 +445,7 @@ kds/
 ├── config/              # Konfigürasyon dosyaları
 │   └── db.js
 ├── database.js          # Veritabanı bağlantısı
-├── server.js            # Ana sunucu dosyası
+├── app.js               # Ana sunucu dosyası
 ├── dashboard.html       # Dashboard sayfası
 ├── dashboard.js         # Dashboard JavaScript
 ├── dashboard.css        # Dashboard stilleri

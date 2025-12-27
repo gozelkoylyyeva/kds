@@ -101,7 +101,7 @@ npm start
 ## 📚 Ana Dosyalar
 
 ### Backend
-- `server.js` - Ana sunucu dosyası
+- `app.js` - Ana sunucu dosyası
 - `database.js` - Veritabanı bağlantısı
 - `routes/api.js` - API route'ları
 - `controllers/` - İş mantığı controller'ları
