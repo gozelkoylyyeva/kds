@@ -6,7 +6,7 @@ exports.getDovizGecmis = (req, res) => { res.json([]); };
 // Rakip analizi endpoint'i - SerpAPI ile rating dahil
 exports.getRakipAnalizi = async (req, res) => {
     try {
-        const SERPAPI_KEY = process.env.SERPAPI_KEY || "2cd20c4121d7a2e3bda15daad41effac28b97da917b013db355fb8779979c865";
+        const SERPAPI_KEY = process.env.SERPAPI_KEY || "e405919429b8e2a20a810ab8f069fe0bca60b4bd3d1fed29e6266d147296ef25";
         const yarin = new Date(); 
         yarin.setDate(yarin.getDate() + 1);
         const cikis = new Date(); 
@@ -720,7 +720,7 @@ exports.rakipDetay = async (req, res) => {
         // Google Hotels API'den canlı rakip verisi çek (cache ile)
         let rakipler = null;
         try {
-            const SERPAPI_KEY = process.env.SERPAPI_KEY || "2cd20c4121d7a2e3bda15daad41effac28b97da917b013db355fb8779979c865";
+            const SERPAPI_KEY = process.env.SERPAPI_KEY || "e405919429b8e2a20a810ab8f069fe0bca60b4bd3d1fed29e6266d147296ef25";
             const yarin = new Date(); yarin.setDate(yarin.getDate() + 1);
             const cikis = new Date(); cikis.setDate(cikis.getDate() + 2);
             const tarihFormat = (d) => d.toISOString().split('T')[0];

@@ -1,4 +1,4 @@
-const { db } = require('../database');
+const db = require('../config/db');
 
 // Yardımcı: güvenli sayıya çevir
 const num = (v, def = 0) => Number.isFinite(Number(v)) ? Number(v) : def;
@@ -13,7 +13,7 @@ const num = (v, def = 0) => Number.isFinite(Number(v)) ? Number(v) : def;
 exports.getYillikKarsilastirma = async (req, res) => {
     try {
         // Kolon varlığı kontrolü
-        let [columnCheck] = await db.query(`
+        let [columnCheck] = await db.promise().query(`
             SELECT COLUMN_NAME 
             FROM INFORMATION_SCHEMA.COLUMNS 
             WHERE TABLE_SCHEMA = DATABASE() 
@@ -60,7 +60,7 @@ exports.getYillikKarsilastirma = async (req, res) => {
             `;
         }
         
-        const [results] = await db.query(sqlQuery);
+        const [results] = await db.promise().query(sqlQuery);
         
         if (results && results.length > 0) {
             const toplamOda = 100; // Varsayılan oda sayısı
@@ -242,7 +242,7 @@ exports.getYillikKarsilastirma = async (req, res) => {
 exports.getKpis = async (req, res) => {
     try {
         // Toplam rezervasyon, gelir ve iptal sayısı
-        const [kpiRows] = await db.query(`
+        const [kpiRows] = await db.promise().query(`
             SELECT 
                 COUNT(*) as toplam_rez,
                 SUM(fiyat * COALESCE(konaklama_suresi, 2)) as toplam_gelir,
@@ -253,7 +253,7 @@ exports.getKpis = async (req, res) => {
         const kpi = kpiRows?.[0] || {};
         
         // Doluluk oranı hesaplama (son 30 gün için)
-        const [dolulukRows] = await db.query(`
+        const [dolulukRows] = await db.promise().query(`
             SELECT 
                 COUNT(DISTINCT DATE(giris_tarihi)) as dolu_gun,
                 DATEDIFF(MAX(giris_tarihi), DATE_SUB(MAX(giris_tarihi), INTERVAL 30 DAY)) as toplam_gun
@@ -312,7 +312,7 @@ exports.getTrends = async (req, res) => {
     
     try {
         // Gerçek veri çek
-        const [results] = await db.query(`
+        const [results] = await db.promise().query(`
             SELECT 
                 DATE_FORMAT(giris_tarihi, '%Y-%m') as ay,
                 COUNT(*) as rezervasyon_sayisi,
@@ -394,7 +394,7 @@ exports.getDolulukTahmini = async (req, res) => {
     try {
         // Geçmiş verileri çek - Gerçek doluluk oranına göre hesapla
         // Önce kolonların varlığını kontrol et
-        let [columnCheck] = await db.query(`
+        let [columnCheck] = await db.promise().query(`
             SELECT COLUMN_NAME 
             FROM INFORMATION_SCHEMA.COLUMNS 
             WHERE TABLE_SCHEMA = DATABASE() 
@@ -432,7 +432,7 @@ exports.getDolulukTahmini = async (req, res) => {
             `;
         }
         
-        const [results] = await db.query(sqlQuery);
+        const [results] = await db.promise().query(sqlQuery);
         
         if (results && results.length > 0) {
             const toplamOda = 100; // Toplam oda sayısı
@@ -559,7 +559,7 @@ exports.getDolulukTahmini = async (req, res) => {
                     GROUP BY ay
                 `;
             }
-            const [gecmisResults] = await db.query(gecmisSqlQuery + ` ORDER BY ay DESC LIMIT 24`);
+            const [gecmisResults] = await db.promise().query(gecmisSqlQuery + ` ORDER BY ay DESC LIMIT 24`);
             
             if (gecmisResults && gecmisResults.length > 0) {
                 const toplamOda = 100; // Toplam oda sayısı
@@ -680,7 +680,7 @@ exports.getGelirKarTahmini = async (req, res) => {
     
     try {
         // Önce kolonların varlığını kontrol et
-        let [columnCheck] = await db.query(`
+        let [columnCheck] = await db.promise().query(`
             SELECT COLUMN_NAME 
             FROM INFORMATION_SCHEMA.COLUMNS 
             WHERE TABLE_SCHEMA = DATABASE() 
@@ -731,7 +731,7 @@ exports.getGelirKarTahmini = async (req, res) => {
             `;
         }
         
-        const [results] = await db.query(sqlQuery);
+        const [results] = await db.promise().query(sqlQuery);
         
         if (results && results.length > 0) {
             const son12Ay = results.slice(-12);
@@ -906,7 +906,7 @@ exports.getSenaryoAnalizi = async (req, res) => {
     
     try {
         // Önce kolonların varlığını kontrol et
-        let [columnCheck] = await db.query(`
+        let [columnCheck] = await db.promise().query(`
             SELECT COLUMN_NAME 
             FROM INFORMATION_SCHEMA.COLUMNS 
             WHERE TABLE_SCHEMA = DATABASE() 
@@ -960,7 +960,7 @@ exports.getSenaryoAnalizi = async (req, res) => {
             `;
         }
         
-        const [results] = await db.query(sqlQuery);
+        const [results] = await db.promise().query(sqlQuery);
         
         let baseDoluluk = 70;
         let baseGelir = 3500000;
@@ -1042,7 +1042,7 @@ exports.getSenaryoAnalizi = async (req, res) => {
 exports.getRiskAnalizi = async (req, res) => {
   try {
         // Gerçek verileri çek
-        const [results] = await db.query(`
+        const [results] = await db.promise().query(`
             SELECT 
                 COUNT(*) as toplam_rez,
                 SUM(iptal_durumu) as toplam_iptal,

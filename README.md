@@ -6,59 +6,99 @@
 
 ---
 
-## 📋 İçindekiler
+## 📋 Proje Açıklaması
 
-1. [Proje Tanımı](#proje-tanımı)
-2. [Özellikler](#özellikler)
-3. [Kurulum](#kurulum)
-4. [Kullanım](#kullanım)
-5. [API Dokümantasyonu](#api-dokümantasyonu)
-6. [Dashboard Kullanımı](#dashboard-kullanımı)
-7. [Tahmin Rapor Örnekleri](#tahmin-rapor-örnekleri)
-8. [Katkıda Bulunma](#katkıda-bulunma)
+Otel Karar Destek Sistemi (KDS), otel işletmelerinin 6-12 aylık stratejik karar alma süreçlerini destekleyen, **MVC mimarisine uygun** geliştirilmiş bir web uygulamasıdır. Sistem, gerçek zamanlı veri analizi, tahmin ve senaryo analizi sunarak yöneticilere karar verme sürecinde destek sağlar.
 
----
+### Proje Amacı
 
-## 🎯 Proje Tanımı
+Bu proje, öğrencilerin aşağıdaki becerileri kazanmalarını sağlamak amacıyla geliştirilmiştir:
 
-Otel Karar Destek Sistemi (KDS), otel işletmelerinin 6-12 aylık stratejik karar alma süreçlerini destekleyen, **karar vermeyen** bir analiz ve görselleştirme platformudur.
+- ✅ **Sunucu taraflı yazılım geliştirme**
+- ✅ **MVC mimarisini doğru ve tutarlı biçimde uygulama**
+- ✅ **REST prensiplerine uygun API tasarlama**
+- ✅ **Veri modeli, iş mantığı ve uç noktaları ayrıştırma**
+- ✅ **Yazılım projelerinde okunabilirlik, sürdürülebilirlik ve ölçeklenebilirlik kazanma**
 
-### Temel Prensipler
+### Temel Özellikler
 
-- ✅ **Analiz Sunar, Karar Vermez:** Sistem alternatifler ve olasılıklar sunar, nihai karar yöneticiye aittir
-- ✅ **Belirsizlik Gösterir:** Tüm tahminler aralık (min-max) ve belirsizlik seviyesi ile sunulur
-- ✅ **Gerçek Veri Tabanlı:** Geçmiş verilerden öğrenir ve gerçekçi tahminler üretir
-- ✅ **Kullanıcı Dostu:** Modern, responsive dashboard arayüzü
-
-### Kullanım Senaryoları
-
-- 📊 **KPI İzleme:** Doluluk, gelir, kar marjı ve iptal oranı takibi
+- 📊 **KPI İzleme:** Doluluk oranı, gelir, kar marjı, iptal oranı takibi
 - 📈 **Trend Analizi:** Aylık doluluk ve gelir trendlerinin görselleştirilmesi
 - 🔮 **Tahmin Yapma:** 6-12 aylık doluluk ve gelir tahminleri
 - 🎲 **Senaryo Analizi:** İyimser, gerçekçi ve kötümser senaryoların karşılaştırılması
 - ⚠️ **Risk Değerlendirmesi:** Gelecek dönem risk skorlarının hesaplanması
+- 💰 **Rakip Fiyat Analizi:** Piyasa fiyat karşılaştırmaları ve rekabet analizi
+- 👥 **Personel Yönetimi:** Doluluk oranına göre personel ihtiyacı tahmini
 
 ---
 
-## ✨ Özellikler
+## 📖 Senaryo Tanımı
 
-### Backend
+### İş Problemi
 
-- 🚀 **RESTful API:** Modern, standart API yapısı
-- 🗄️ **MySQL Veritabanı:** Güvenilir veri saklama
-- 🔄 **Otomatik Trigger'lar:** Rezervasyon ve fiyat değişikliklerinin otomatik loglanması
-- 📊 **Hesaplama Motoru:** Mevsimsellik ve trend analizi içeren tahmin algoritmaları
+Otel işletmeleri, dinamik piyasa koşullarında stratejik kararlar almak zorundadır. Bu kararlar şunları içerir:
+- Fiyatlandırma stratejileri
+- Personel planlaması
+- Pazarlama bütçesi yönetimi
+- Rezervasyon kapasitesi planlaması
 
-### Frontend
+### Çözüm
 
-- 📱 **Responsive Dashboard:** Mobil ve masaüstü uyumlu
-- 📈 **İnteraktif Grafikler:** Chart.js ile dinamik görselleştirmeler
-- 🎨 **Modern UI:** Bootstrap 5 ile profesyonel tasarım
-- ⚡ **Gerçek Zamanlı:** API'den dinamik veri çekme
+KDS, otel yöneticilerine:
+- Geçmiş verilere dayalı tahminler
+- Çoklu senaryo analizleri
+- Risk değerlendirmeleri
+- Rakip fiyat karşılaştırmaları
+
+sunarak karar verme sürecini destekler.
+
+### Kullanıcı Tipleri
+
+1. **Yönetici:** Tüm verilere erişim, rapor görüntüleme, senaryo analizi
+2. **Operasyon Ekibi:** Günlük KPI takibi, rezervasyon analizi
 
 ---
 
-## 🚀 Kurulum
+## 🏗️ Mimari Yapı
+
+### MVC Mimarisi
+
+Proje, **katı MVC (Model-View-Controller) mimarisine** uygun olarak geliştirilmiştir:
+
+```
+kds/
+├── controllers/          # Controller Katmanı (İş Mantığı)
+│   ├── authController.js
+│   ├── dashboardController.js
+│   ├── otelController.js
+│   ├── piyasaController.js
+│   ├── tahminController.js
+│   └── ...
+├── models/              # Model Katmanı (Veri Modelleri)
+│   ├── Rezervasyon.js
+│   ├── Oda.js
+│   ├── Personel.js
+│   └── ...
+├── views/               # View Katmanı (Arayüz)
+│   ├── index.html
+│   ├── analytics.html
+│   └── ...
+├── routes/              # Route Tanımlamaları
+│   └── api.js
+├── config/              # Konfigürasyon
+│   └── db.js
+└── app.js               # Ana Uygulama Dosyası
+```
+
+### Katman Sorumlulukları
+
+- **Model:** Veritabanı işlemleri ve veri modeli tanımları
+- **View:** Kullanıcı arayüzü (HTML, CSS, JavaScript)
+- **Controller:** İş mantığı, API endpoint'leri, veri işleme
+
+---
+
+## 🔧 Kurulum Adımları
 
 ### Gereksinimler
 
@@ -79,52 +119,50 @@ cd kds
 npm install
 ```
 
-Bu komut aşağıdaki paketleri yükler:
-- `express` - Web framework
-- `mysql2` - MySQL bağlantı kütüphanesi
-- `chart.js` - Grafik kütüphanesi
-- `dotenv` - Ortam değişkenleri yönetimi
-- Ve diğer bağımlılıklar...
-
-### Adım 3: Veritabanı Kurulumu
-
-#### 3.1 MySQL Veritabanı Oluşturun
-
-```sql
-CREATE DATABASE kds_oteldb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-#### 3.2 Ortam Değişkenlerini Ayarlayın
+### Adım 3: Ortam Değişkenlerini Ayarlayın
 
 Proje kök dizininde `.env` dosyası oluşturun:
+
+```bash
+cp .env.example .env
+```
+
+`.env` dosyasını düzenleyin:
 
 ```env
 # Veritabanı Ayarları
 DB_HOST=127.0.0.1
 DB_USER=root
-DB_PASSWORD=root
-DB_NAME=kds_oteldb
+DB_PASSWORD=your_password
+DB_NAME=otel_kds_db
 DB_PORT=8889
 
 # Sunucu Ayarları
 PORT=3001
+
+# API Keys (Opsiyonel)
+SERPAPI_KEY=your_serpapi_key_here
 ```
 
 **Not:** Mac kullanıcıları için MySQL port genellikle `8889` (MAMP) veya `3306` (standart) olabilir.
 
-#### 3.3 Veritabanı Tablolarını Oluşturun
+### Adım 4: Veritabanı Kurulumu
+
+#### 4.1 MySQL Veritabanı Oluşturun
+
+```sql
+CREATE DATABASE otel_kds_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+#### 4.2 Veritabanı Tablolarını Oluşturun
 
 ```bash
-# Temel tabloları oluştur
 node setup.js
 ```
 
-#### 3.4 Örnek Verileri Yükleyin
+Bu komut gerekli tabloları otomatik olarak oluşturur.
 
-Veriler veritabanı kurulum sırasında veya manuel olarak yüklenebilir.
-```
-
-### Adım 4: Sunucuyu Başlatın
+### Adım 5: Sunucuyu Başlatın
 
 ```bash
 npm start
@@ -134,344 +172,245 @@ Sunucu başarıyla başladığında şu mesajı göreceksiniz:
 
 ```
 🚀 Server Başladı: http://localhost:3001
+✅ Veritabanı Bağlantısı Başarılı
 ```
 
-### Adım 5: Tarayıcıda Açın
+### Adım 6: Tarayıcıda Açın
 
-- **Dashboard:** http://localhost:3001/dashboard.html
-- **Ana Sayfa:** http://localhost:3001/index.html
+- **Ana Dashboard:** http://localhost:3001/index.html
+- **Analytics Sayfası:** http://localhost:3001/analytics.html
 - **API Test:** http://localhost:3001/api/dashboard/kpis
 
 ---
 
-## 📖 Kullanım
+## 📚 API Endpoint Listesi
 
-### Temel Kullanım
+### Dashboard API'leri
 
-1. **Sunucuyu Başlatın:**
-   ```bash
-   npm start
-   ```
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/dashboard/kpis` | KPI verilerini getirir |
+| GET | `/api/dashboard/trends?months=6\|12` | Trend verilerini getirir |
+| GET | `/api/dashboard/yillik-karsilastirma` | Yıllık karşılaştırma verilerini getirir |
+| GET | `/api/dashboard/doluluk-tahmini?months=6\|12` | Doluluk tahmini getirir |
+| GET | `/api/dashboard/gelir-kar-tahmini?months=6\|12` | Gelir ve kar tahmini getirir |
+| GET | `/api/dashboard/senaryo-analizi?type=optimistic\|realistic\|pessimistic` | Senaryo analizi getirir |
+| GET | `/api/dashboard/risk` | Risk analizi getirir |
 
-2. **Dashboard'u Açın:**
-   Tarayıcıda `http://localhost:3001/dashboard.html` adresine gidin
+### Rezervasyon API'leri
 
-3. **Filtreleri Kullanın:**
-   - **Tarih Aralığı:** "Son 6 Ay" veya "Son 12 Ay" seçin
-   - **Senaryo Tipi:** "İyimser", "Gerçekçi" veya "Kötümser" seçin
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/ozet` | Genel özet verilerini getirir |
+| GET | `/api/aylik-doluluk` | Aylık doluluk verilerini getirir |
+| GET | `/api/mevsimsel-doluluk` | Mevsimsel doluluk verilerini getirir |
+| GET | `/api/rezervasyon-kaynaklari` | Rezervasyon kaynaklarını getirir |
 
-4. **Grafikleri İnceleyin:**
-   - KPI kartları otomatik güncellenir
-   - Trend grafikleri dinamik olarak çizilir
-   - Tahmin aralıkları görselleştirilir
+### Analiz API'leri
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/rakip-analizi` | Rakip fiyat analizi getirir |
+| GET | `/api/rakip-detay/:tip` | Oda tipi bazlı rakip detayları |
+| GET | `/api/gelir-trend` | Gelir trend verilerini getirir |
+| GET | `/api/kar-marji` | Kar marjı analizi getirir |
+| GET | `/api/fiyat-trend-oda-tipi` | Oda tipi bazlı fiyat trendi |
+| GET | `/api/tahmin-dogrulugu` | Tahmin doğruluğu analizi |
+
+### Tahmin API'leri
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/fiyat-stratejisi` | Fiyat stratejisi önerileri |
+| GET | `/api/personel-ihtiyaci` | Personel ihtiyacı tahmini |
+| GET | `/api/gelecek-risk-analizi?periyot=6\|12` | Gelecek risk analizi |
+| GET | `/api/doluluk-tahmini?periyot=6\|12` | Doluluk tahmini |
+
+### Senaryo API'leri
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| POST | `/api/simulasyon` | Fiyat simülasyonu yapar |
+| POST | `/api/senaryo-kaydet` | Senaryo analizi kaydeder |
+| GET | `/api/senaryo-rapor/:id` | Senaryo raporu getirir |
+| GET | `/api/senaryo-raporlari` | Tüm senaryo raporlarını getirir |
+| GET | `/api/senaryolar` | Senaryo listesini getirir |
+
+### KPI ve Rapor API'leri
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| GET | `/api/gelismis-kpi` | Gelişmiş KPI verilerini getirir |
+| GET | `/api/kpi-detay?kpiTipi=doluluk&periyot=6` | KPI detay verilerini getirir |
+| GET | `/api/aylik-rapor` | Aylık rapor getirir |
+| GET | `/api/oneriler` | Öneriler motoru sonuçları |
+
+### Kimlik Doğrulama API'leri
+
+| Method | Endpoint | Açıklama |
+|--------|----------|----------|
+| POST | `/api/login` | Kullanıcı girişi |
+
+**Detaylı API dokümantasyonu için:** [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
+
+---
+
+## 💾 CRUD İşlemleri
+
+Proje aşağıdaki CRUD (Create, Read, Update, Delete) işlemlerini içermektedir:
+
+### 1. Rezervasyon Yönetimi
+
+- **Create:** Yeni rezervasyon oluşturma (veritabanı üzerinden)
+- **Read:** Rezervasyon listesi ve detay görüntüleme
+- **Update:** Rezervasyon bilgilerini güncelleme
+- **Delete:** Rezervasyon silme (iş kurallarına göre)
+
+### 2. Senaryo Yönetimi
+
+- **Create:** Yeni senaryo analizi kaydetme (`POST /api/senaryo-kaydet`)
+- **Read:** Senaryo listesi ve rapor görüntüleme
+- **Update:** Senaryo bilgilerini güncelleme
+- **Delete:** Senaryo silme
+
+### 3. Fiyat Geçmişi Yönetimi
+
+- **Create:** Fiyat geçmişi kaydı oluşturma
+- **Read:** Fiyat trend analizi görüntüleme
+- **Update:** Fiyat bilgilerini güncelleme
+
+---
+
+## ⚙️ İş Kuralları (Business Rules)
+
+Proje, aşağıdaki özel iş kurallarını içermektedir:
+
+### 1. Tarihi Geçmiş Rezervasyon İptal Kuralı
+
+**Kural:** Tarihi geçmiş rezervasyonlar silinemez veya iptal edilemez.
+
+**Uygulama:** 
+- Rezervasyon silme/iptal işlemlerinde `giris_tarihi < CURDATE()` kontrolü yapılır
+- Geçmiş tarihli rezervasyonlar için işlem engellenir
+- Kullanıcıya uyarı mesajı gösterilir
+
+**Kod Konumu:** `controllers/otelController.js`, `controllers/dashboardController.js`
+
+### 2. Personel İhtiyacı Tahmin Kuralı
+
+**Kural:** Doluluk oranına göre personel ihtiyacı otomatik hesaplanır. Düşük doluluk oranlarında personel azaltılabilir, yüksek doluluk oranlarında personel artırılması önerilir.
+
+**Uygulama:**
+- Doluluk oranı < %50 ise: Personel azaltma önerilir
+- Doluluk oranı > %80 ise: Personel artırma önerilir
+- Personel maliyeti toplam gelirin %48'ini geçemez
+
+**Kod Konumu:** `controllers/tahminController.js` - `getPersonelIhtiyaci()`
+
+### 3. Senaryo Kaydetme Validasyon Kuralı
+
+**Kural:** Senaryo kaydetme işleminde gerekli alanlar kontrol edilir ve senaryo tipine göre validasyon yapılır.
+
+**Uygulama:**
+- Senaryo adı ve verisi zorunludur
+- Simülasyon senaryolarında fiyat değişimi ve personel sayısı kontrol edilir
+- Risk seviyesi hesaplanarak sonuç durumu belirlenir
+
+**Kod Konumu:** `controllers/tahminController.js` - `kaydetSenaryoAnalizi()`
+
+### 4. Risk Skoru Hesaplama Kuralı
+
+**Kural:** Risk skoru, düşük doluluk, gelir dalgalanması, personel maliyeti ve rakip fiyat baskısı faktörlerine göre hesaplanır. Her faktör 0-25 puan arasında değerlendirilir.
+
+**Uygulama:**
+- Toplam risk skoru 0-100 arasında
+- Risk seviyesi: 0-30 (Düşük), 31-60 (Orta), 61-100 (Yüksek)
+- Risk skoru > 60 ise uyarı mesajı gösterilir
+
+**Kod Konumu:** `controllers/tahminController.js` - `hesaplaGelecekRiskAnalizi()`
+
+---
+
+## 📊 Veritabanı Yapısı (ER Diyagramı)
+
+Projenin veritabanı yapısı için ER diyagramı `ER_DIYAGRAM.png` veya `ER_DIYAGRAM.pdf` dosyasında bulunmaktadır.
+
+### Ana Tablolar
+
+1. **rezervasyonlar** - Rezervasyon bilgileri
+2. **oda_tipleri** - Oda tipi tanımları
+3. **fiyat_gecmisi** - Fiyat geçmişi kayıtları
+4. **senaryolar** - Senaryo analizleri
+5. **personeller** - Personel bilgileri
+6. **rezervasyon_log** - Rezervasyon değişiklik logları
+
+**Detaylı veritabanı şeması için:** [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md)
+
+---
+
+## 🛠️ Teknik Detaylar
+
+### Backend Teknolojileri
+
+- **Node.js** - Runtime environment
+- **Express.js** - Web framework
+- **MySQL2** - Veritabanı bağlantı kütüphanesi
+- **dotenv** - Ortam değişkenleri yönetimi
+- **Axios** - HTTP client (dış API'ler için)
+
+### Frontend Teknolojileri
+
+- **HTML5** - Yapısal markup
+- **CSS3** - Stil tanımlamaları
+- **JavaScript (ES6+)** - İstemci tarafı mantık
+- **Bootstrap 5** - CSS framework
+- **Chart.js** - Grafik kütüphanesi
+
+### REST API Prensipleri
+
+- **RESTful tasarım:** HTTP metodları doğru kullanılmıştır (GET, POST)
+- **Resource-based URL'ler:** Endpoint'ler kaynak bazlıdır
+- **JSON format:** Tüm API yanıtları JSON formatındadır
+- **Stateless:** Her istek bağımsızdır
+- **Hata yönetimi:** Standart HTTP status kodları kullanılmıştır
+
+---
+
+## 📝 Kullanım Örnekleri
 
 ### API Kullanımı
-
-API'leri doğrudan çağırabilirsiniz:
 
 ```bash
 # KPI verilerini al
 curl http://localhost:3001/api/dashboard/kpis
 
-# Trend verilerini al (6 ay)
-curl "http://localhost:3001/api/dashboard/trends?months=6"
+# Doluluk tahmini al (6 ay)
+curl "http://localhost:3001/api/dashboard/doluluk-tahmini?months=6"
 
-# Doluluk tahmini al
-curl "http://localhost:3001/api/doluluk-tahmini?months=6"
+# Senaryo analizi al (gerçekçi)
+curl "http://localhost:3001/api/dashboard/senaryo-analizi?type=realistic"
+
+# Risk analizi al
+curl http://localhost:3001/api/dashboard/risk
 ```
 
-Detaylı API dokümantasyonu için [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) dosyasına bakın.
-
----
-
-## 📚 API Dokümantasyonu
-
-### Temel Endpoint'ler
-
-#### 1. KPI Verileri
-
-```http
-GET /api/dashboard/kpis
-```
-
-**Yanıt Örneği:**
-```json
-{
-  "doluluk": 72.5,
-  "gelir": 3500000,
-  "karMarji": 38.5,
-  "iptalOrani": 12.5
-}
-```
-
-#### 2. Trend Verileri
-
-```http
-GET /api/dashboard/trends?months=6
-```
-
-**Yanıt Örneği:**
-```json
-{
-  "dolulukTrend": [
-    { "ay": "2024-07", "value": 65.5 },
-    { "ay": "2024-08", "value": 68.2 }
-  ],
-  "gelirTrend": [
-    { "ay": "2024-07", "value": 3200000 },
-    { "ay": "2024-08", "value": 3450000 }
-  ],
-  "riskTrend": [
-    { "ay": "2024-07", "skor": 35 },
-    { "ay": "2024-08", "skor": 42 }
-  ]
-}
-```
-
-#### 3. Doluluk Tahmini
-
-```http
-GET /api/doluluk-tahmini?months=6
-```
-
-**Yanıt Örneği:**
-```json
-{
-  "min": 55.0,
-  "max": 75.0,
-  "belirsizlik": "orta"
-}
-```
-
-#### 4. Senaryo Analizi
-
-```http
-GET /api/senaryo-analizi?type=optimistic
-```
-
-**Yanıt Örneği:**
-```json
-{
-  "senaryoTipi": "optimistic",
-  "doluluk": {
-    "min": 69.0,
-    "max": 97.8
-  },
-  "gelir": {
-    "min": 3450000,
-    "max": 4830000
-  },
-  "riskSkoru": 25,
-  "etkiAciklama": "Agresif büyüme stratejisi değerlendirilebilir..."
-}
-```
-
-#### 5. Risk Analizi
-
-```http
-GET /api/risk-analizi
-```
-
-**Yanıt Örneği:**
-```json
-{
-  "riskSkoru": 42,
-  "riskSeviyesi": "Orta",
-  "riskAciklama": "Dikkat gerektiren risk seviyesi görülmektedir..."
-}
-```
-
-**Tüm API endpoint'leri için detaylı dokümantasyon:** [API_DOCUMENTATION.md](./API_DOCUMENTATION.md)
-
----
-
-## 🎨 Dashboard Kullanımı
-
-### Dashboard Bileşenleri
-
-#### 1. KPI Kartları
-
-Dashboard'un üst kısmında 4 KPI kartı bulunur:
-
-- **🟢 Doluluk Oranı:** Mevcut doluluk yüzdesi
-- **🔵 Toplam Gelir:** Net gelir (TL)
-- **🟡 Kar Marjı:** Kar marjı yüzdesi
-- **🔴 İptal Oranı:** İptal edilen rezervasyon yüzdesi
-
-**Renk Kodlaması:**
-- 🟢 **Yeşil:** İyi performans (hedefin üzerinde)
-- 🟡 **Sarı:** Orta performans (hedefe yakın)
-- 🔴 **Kırmızı:** Dikkat gerektiren (hedefin altında)
-
-#### 2. Trend Grafikleri
-
-**Aylık Doluluk Trendi (Line Chart):**
-- Son 6 veya 12 ayın doluluk oranlarını gösterir
-- Trend çizgisi ile artış/azalış görselleştirilir
-- Mavi renk kullanılır
-
-**Aylık Gelir Trendi (Bar Chart):**
-- Son 6 veya 12 ayın gelir değerlerini gösterir
-- Bar chart ile aylık karşılaştırma yapılır
-- Yeşil renk kullanılır
-
-#### 3. Tahmin Aralığı Grafiği
-
-**6-12 Aylık Tahmin Aralığı:**
-- Doluluk ve gelir için min-max aralıkları gösterilir
-- Belirsizlik seviyesi görselleştirilir
-- Band chart formatında sunulur
-
-#### 4. Senaryo Karşılaştırma Grafiği
-
-**İyimser / Gerçekçi / Kötümser:**
-- Üç farklı senaryo için kar/risk karşılaştırması
-- Bar chart formatında
-- Renk kodlu (yeşil: iyimser, mavi: gerçekçi, kırmızı: kötümser)
-
-### Filtreler
-
-#### Tarih Aralığı Seçici
-
-- **Son 6 Ay:** Son 6 aylık verileri gösterir
-- **Son 12 Ay:** Son 12 aylık verileri gösterir
-
-**Kullanım:** Dropdown menüden seçim yapın, grafikler otomatik güncellenir.
-
-#### Senaryo Tipi Seçici
-
-- **İyimser:** Yüksek büyüme senaryosu
-- **Gerçekçi:** Dengeli büyüme senaryosu
-- **Kötümser:** Muhafazakar senaryo
-
-**Kullanım:** Senaryo grafiğini güncellemek için seçim yapın.
-
----
-
-## 📊 Tahmin Rapor Örnekleri
-
-### Örnek 1: 6 Aylık Doluluk Tahmini
-
-**API İsteği:**
-```bash
-curl "http://localhost:3001/api/doluluk-tahmini?months=6"
-```
-
-**Yanıt:**
-```json
-{
-  "min": 55.0,
-  "max": 75.0,
-  "belirsizlik": "orta"
-}
-```
-
-**Yorum:**
-- Gelecek 6 ay için doluluk oranı %55-75 aralığında beklenmektedir
-- Belirsizlik seviyesi "orta" - geçmiş veri miktarı yeterli
-- Ortalama tahmin: %65
-- **Karar Destek Notu:** Bu aralık, mevsimsellik ve geçmiş trendlere dayanmaktadır. Nihai karar yöneticiye aittir.
-
-### Örnek 2: Senaryo Analizi Raporu
-
-**API İsteği:**
-```bash
-curl "http://localhost:3001/api/senaryo-analizi?type=realistic"
-```
-
-**Yanıt:**
-```json
-{
-  "senaryoTipi": "realistic",
-  "doluluk": {
-    "min": 60.0,
-    "max": 85.0
-  },
-  "gelir": {
-    "min": 3000000,
-    "max": 4200000
-  },
-  "riskSkoru": 40,
-  "etkiAciklama": "Dengeli büyüme yaklaşımı değerlendirilebilir. Sürdürülebilir strateji olarak görülmektedir."
-}
-```
-
-**Yorum:**
-- **Gerçekçi Senaryo:** Dengeli büyüme yaklaşımı
-- **Doluluk Aralığı:** %60-85
-- **Gelir Aralığı:** 3.000.000 - 4.200.000 TL
-- **Risk Skoru:** 40 (Orta risk)
-- **Öneri:** Mevcut stratejiler sürdürülebilir görünmektedir
-
-### Örnek 3: Risk Analizi Raporu
-
-**API İsteği:**
-```bash
-curl "http://localhost:3001/api/risk-analizi"
-```
-
-**Yanıt:**
-```json
-{
-  "riskSkoru": 42,
-  "riskSeviyesi": "Orta",
-  "riskAciklama": "Dikkat gerektiren risk seviyesi görülmektedir. Önleyici aksiyonlar değerlendirilebilir."
-}
-```
-
-**Yorum:**
-- **Risk Skoru:** 42/100
-- **Risk Seviyesi:** Orta
-- **Risk Faktörleri:**
-  - İptal oranı: %12.5 (orta seviye)
-  - Doluluk trendi: Düşüş eğilimi
-  - Gelir dalgalanması: Normal
-- **Öneri:** Önleyici aksiyonlar değerlendirilebilir, ancak kritik durum yoktur
-
----
-
-## 🛠️ Geliştirme
-
-### Proje Yapısı
-
-```
-kds/
-├── controllers/          # İş mantığı controller'ları
-│   ├── dashboardController.js
-│   ├── tahminController.js
-│   └── ...
-├── routes/              # API route'ları
-│   └── api.js
-├── config/              # Konfigürasyon dosyaları
-│   └── db.js
-├── database.js          # Veritabanı bağlantısı
-├── app.js               # Ana sunucu dosyası
-├── dashboard.html       # Dashboard sayfası
-├── dashboard.js         # Dashboard JavaScript
-├── dashboard.css        # Dashboard stilleri
-└── triggers.sql         # MySQL trigger'ları
-```
-
-### Script'ler
+### Senaryo Kaydetme
 
 ```bash
-# Sunucuyu başlat
-npm start
-
-# Veritabanı kurulumu
-node setup.js
+curl -X POST http://localhost:3001/api/senaryo-kaydet \
+  -H "Content-Type: application/json" \
+  -d '{
+    "senaryo_adi": "Fiyat Artışı Senaryosu",
+    "periyot": 6,
+    "senaryo_verisi": {
+      "senaryo_tipi": "simulasyon",
+      "fiyat_degisimi": 10,
+      "personel_sayisi": 25,
+      "tahmini_ciro": 5000000,
+      "net_kar": 2000000
+    }
+  }'
 ```
-
-### Ortam Değişkenleri
-
-`.env` dosyasında ayarlanabilir değişkenler:
-
-- `DB_HOST` - Veritabanı host adresi
-- `DB_USER` - Veritabanı kullanıcı adı
-- `DB_PASSWORD` - Veritabanı şifresi
-- `DB_NAME` - Veritabanı adı
-- `DB_PORT` - Veritabanı portu
-- `PORT` - Sunucu portu
 
 ---
 
@@ -479,34 +418,17 @@ node setup.js
 
 Test planı ve test senaryoları için [TEST_PLAN.md](./TEST_PLAN.md) dosyasına bakın.
 
-### Test Çalıştırma
-
-```bash
-# Birim testler
-npm test
-
-# API testleri
-npm run test:api
-
-# Entegrasyon testleri
-npm run test:integration
-```
-
 ---
 
-## 📝 Lisans
+## 📄 Lisans
 
 ISC License
 
 ---
 
-## 🤝 Katkıda Bulunma
+## 👥 Katkıda Bulunanlar
 
-1. Fork edin
-2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
-3. Commit edin (`git commit -m 'Add amazing feature'`)
-4. Push edin (`git push origin feature/amazing-feature`)
-5. Pull Request açın
+Bu proje akademik amaçlı geliştirilmiştir.
 
 ---
 
@@ -519,7 +441,9 @@ Sorularınız için issue açabilir veya dokümantasyonu inceleyebilirsiniz.
 ## 📚 Ek Kaynaklar
 
 - [API Dokümantasyonu](./API_DOCUMENTATION.md)
+- [Veritabanı Şeması](./DATABASE_SCHEMA.md)
 - [Test Planı](./TEST_PLAN.md)
+- [Proje Özeti](./PROJE_OZET.md)
 
 ---
 

@@ -20,9 +20,9 @@ exports.getOzet = (req, res) => {
         const data = result[0];
         res.json({
             toplam_rezervasyon: data.toplam_rezervasyon,
-            toplam_ciro: data.toplam_ciro,
-            ortalama_gecelik_fiyat: data.ortalama_gecelik_fiyat,
-            toplam_iptal: data.toplam_iptal
+            toplam_ciro: data.toplam_ciro || 0,
+            ortalama_gecelik_fiyat: data.ortalama_gecelik_fiyat || 0,
+            toplam_iptal: data.toplam_iptal || 0
         });
     });
 };
